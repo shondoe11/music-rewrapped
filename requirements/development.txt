@@ -1,0 +1,4 @@
+-r testing.txt
+flake8==5.0.4
+black==22.10.0
+Flask-Migrate==3.1.0
