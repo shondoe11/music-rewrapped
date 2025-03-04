@@ -1,0 +1,3 @@
+-r production.txt # requirements chaining
+pytest==7.1.2
+Flask-Testing==0.8.1
