@@ -9,8 +9,10 @@ from server.config import DevelopmentConfig #~ current app config class: can cha
 from .extensions import db
 from flask_migrate import Migrate
 from flask_cors import CORS
+from flask_socketio import SocketIO
 
 migrate = Migrate()
+socketio = SocketIO(cors_allowed_origins='*')
 
 def create_app(config_class=DevelopmentConfig):
     app = Flask(__name__)
@@ -19,6 +21,7 @@ def create_app(config_class=DevelopmentConfig):
     #& Init extensions with app context
     db.init_app(app) 
     migrate.init_app(app, db) #~ hook Flask-Migrate to app
+    socketio.init_app(app) #~ hook socketIO to app
     #& model imports here (register with SQLA) important for migration auto-generation
     from .model import User
     #& register blueprints (modular route handling)
@@ -33,6 +36,10 @@ def create_app(config_class=DevelopmentConfig):
     
     return app
 
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+    socketio.emit('notification', {'message': 'Welcome to Music Re-Wrapped!'})
 
 if __name__ == '__main__':
     app = create_app()

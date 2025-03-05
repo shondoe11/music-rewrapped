@@ -4,14 +4,21 @@
 #
 #    pip-compile requirements.in
 #
+bidict==0.23.1
+    # via python-socketio
 click==8.1.8
     # via flask
 flask==2.2.0
     # via
     #   -r requirements.in
+    #   flask-socketio
     #   flask-sqlalchemy
+flask-socketio==5.5.1
+    # via -r requirements.in
 flask-sqlalchemy==3.0.2
     # via -r requirements.in
+h11==0.14.0
+    # via wsproto
 itsdangerous==2.2.0
     # via flask
 jinja2==3.1.5
@@ -24,6 +31,12 @@ psycopg[binary]==3.2.5
     # via -r requirements.in
 psycopg-binary==3.2.5
     # via psycopg
+python-engineio==4.11.2
+    # via python-socketio
+python-socketio==5.12.1
+    # via flask-socketio
+simple-websocket==1.1.0
+    # via python-engineio
 sqlalchemy==2.0.38
     # via flask-sqlalchemy
 typing-extensions==4.12.2
@@ -32,3 +45,5 @@ werkzeug==2.3.8
     # via
     #   -r requirements.in
     #   flask
+wsproto==1.2.0
+    # via simple-websocket
