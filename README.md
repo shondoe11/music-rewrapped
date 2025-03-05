@@ -11,104 +11,132 @@ Develop an interactive dashboard that aggregates Spotify listening data with liv
 - Real-time data visualization of Spotify metrics  
 - Dynamic concert suggestions via the Ticketmaster API  
 - Personalized tagging and filtering of events  
-- Multiple user roles (regular, admin, promoter) with specific privileges  
+- Multiple user roles (guest, regular, promoter) with specific privileges  
+- Real-time notifications powered by Flask-Socket.IO for immediate event updates
 
 ---
 
-# Wireframe
+## 2. Wireframe
 
-**WF Overview**  
-- **Home Dashboard**: Summary of listening stats, current top tracks/artists, and event recommendations  
-- **Detail Views**: Interactive charts for trends over time, geographic insights, and genre breakdowns  
-- **Event Page**: Concert details, tagging functionality, and user-saved event list  
-- **Admin/Promoter Panels**: Interfaces for managing user data, event submissions, and analytics  
+### WF Overview
+
+#### **Home**
+- **Welcome to Music Re-Wrapped**
+- “Hi there, \${user}! Scroll down to learn more about your music taste ⬇️”
+- **Top Songs**
+  - Leaderboard visualization to display user’s most-played tracks over a time frame (1 month, 3 months, 6 months, 1 year).
+  - Show top 10 items in two columns.
+  - Display each track’s artwork (square with padding, border radius, and Tailwind box shadows).
+- **Favorite Genres Evolution**
+  - A stream graph showing the user’s most listened-to genres over a selected time frame.
+- **Top Artists**
+  - Leaderboard visualization for most-played artists (similar time frames).
+  - Show top 10 items in two columns.
+  - Display each artist’s image (circle with padding, box shadows).
+- **Longest Listening Streak**
+  - Summaries of total minutes listened, biggest listening day, total tracks played.
+  - A radial/polar chart highlighting hours listened each month.
+- **Top Listeners (Percentile Ranking)**
+  - A gauge/speedometer chart to show where the user ranks among listeners of a favorite artist.
+
+#### **Re-Wrapped Page**
+This page offers users deeper insights into their music listening habits beyond the basic homepage statistics. Key elements include:
+
+- **In-Depth Analytics & Trends**  
+  - Interactive multi-line charts that compare listening trends across different time frames (daily, weekly, monthly).  
+  - Heatmaps displaying listening intensity by day of the week or hour of the day.
+
+- **Genre & Mood Analysis**  
+  - Bubble charts or scatter plots representing the diversity of genres, where bubble size indicates listening duration.  
+  - Chord diagrams that illustrate correlations between artists and genres based on user activity.
+
+- **Geographic Insights**  
+  - Interactive maps highlighting listener density or concert attendance by region.  
+  - Flow maps showing movement trends if location data is available.
+
+- **Personalized Recommendations**  
+  - A carousel featuring suggested concerts or new album releases tailored to the user’s listening habits.  
+  - Dynamic ranking charts that update as new data is pulled from Spotify and external concert APIs.
+
+#### **Events Page**
+This page is designed to showcase concert and event data in an engaging, user-friendly format. Its components include:
+
+- **Concert Listings & Details**  
+  - A card-based layout that presents upcoming concerts with details such as location, date, and artist information.  
+  - Integration of interactive maps to display concert venues relative to the user’s location.
+
+- **Tagging & Engagement**  
+  - Features allowing users to tag or save events with clear visual indicators (e.g., icons or labels).  
+  - Timeline visualizations that show the user's saved events over upcoming weeks or months.
+
+- **Filtering & Sorting**  
+  - Advanced filtering options based on genre, date, location, and artist.  
+  - Visual widgets such as sliders and dropdown menus to refine event lists in real time.
+
+- **Real-Time Updates**  
+  - Integration with Flask-Socket.IO to push notifications of new or updated events directly to the Events page.
+
+#### **Promoter Panel**
+Tailored for concert promoters, this panel provides tools to manage events and track engagement. Key features include:
+
+- **Event Management Dashboard**  
+  - A comprehensive view of submitted events with status indicators (pending, approved, rejected).  
+  - Detailed metrics for each event (views, tags, user engagement over time).
+
+- **Interactive Analytics**  
+  - Time series charts that display trends in event engagement, such as tags over time and interest spikes.  
+  - Comparative bar charts for analyzing multiple events side-by-side based on geographic reach or demographic data.
+
+- **Content Submission & Updates**  
+  - Intuitive forms for submitting new events, complete with real-time validation and preview features.  
+  - Tools for editing or updating event details, including version control and change history.
+
+- **Communication & Feedback**  
+  - An integrated notification system (powered by Flask-Socket.IO) for direct communication between promoters and platform support.  
+  - Aggregated feedback graphs (e.g., satisfaction ratings or sentiment analysis) to help promoters optimize their event listings.
 
 ---
 
-# User Stories
+## 3. User Stories
 
-## Regular Users
+### Guest Users
+- As a guest user, I want to connect via Spotify OAuth so I can quickly preview personalized music stats without signing up for a full account.  
+- As a guest user, I want to see a limited dashboard with key metrics (top tracks, top artists, sample visualizations) so I can evaluate the value of the platform.  
+- As a guest user, I want to be prompted to register when accessing advanced features so I understand the benefits of a full account.  
+- As a guest user, I want to receive notifications when my session is nearing expiration so I can decide whether to upgrade and preserve my data.
 
-1. **Spotify OAuth Onboarding**  
-   - *As a user, I want to sign in through Spotify OAuth, so that I can securely grant the app permission to access my listening data without sharing my credentials directly.*
+### Regular Users
+- As a user, I want to view detailed dashboards of my listening history to track trends over different time frames (daily, weekly, monthly, yearly).  
+- As a user, I want to filter my data by genre, time period, or geographic region to uncover personalized insights about my listening habits.  
+- As a user, I want to tag and save concerts or events I’m interested in so I can build a personalized list of upcoming events.  
+- As a user, I want to receive real-time concert suggestions and notifications (via WebSockets) based on my listening trends so I can discover new live events.  
+- As a user, I want to share interesting statistics or visualizations on social media to engage with my network and promote the platform.
 
-2. **Personalized Dashboard**  
-   - *As a user, I want to see a dashboard summarizing my top tracks, artists, and genres, so that I can quickly gauge my recent listening habits.*
-
-3. **Detailed Listening History**  
-   - *As a user, I want to explore my listening history over time, so that I can discover trends such as peak hours or day-by-day usage.*
-
-4. **Concert Recommendations**  
-   - *As a user, I want to see concert suggestions relevant to my top artists and location, so that I can easily find events I might enjoy.*
-
-5. **Tagging & Favorites**  
-   - *As a user, I want to tag and save concerts or recommended events, so that I can quickly revisit them later.*
-
-6. **Profile Customization**  
-   - *As a user, I want to set personal preferences (like location radius or preferred genres), so that the system tailors my event suggestions.*
-
-7. **Social Sharing (Stretch)**  
-   - *As a user, I want to share interesting stats on social media, so that I can show my friends my music tastes.*
+### Concert Promoter Users
+- As a promoter, I want to easily submit new event details so I can reach a highly engaged audience interested in live music.  
+- As a promoter, I want to update or edit my event listings in real time to ensure that the information remains accurate and current.  
+- As a promoter, I want to view detailed engagement analytics (such as views, tags, and interaction trends) for my events so I can measure their success.  
+- As a promoter, I want to receive aggregated feedback on my event listings to help refine my promotional strategies.  
+- As a promoter, I want to communicate directly with platform support through the promoter panel so that any issues or queries can be resolved quickly.
 
 ---
 
-## Admin Users
+## 4. Data Model
 
-1. **Admin Login & Role Management**  
-   - *As an admin, I want to log into an admin panel securely, so that I can manage the system without exposing sensitive controls to regular users.*
+### Users Table
+- **User ID**, OAuth tokens, email, profile info, role (guest, regular, promoter), and preferences
 
-2. **User Oversight & Moderation**  
-   - *As an admin, I want to see a list of all registered users, so that I can manage or moderate user profiles if necessary.*
+### Listening History Table
+- Records of Spotify activity (track IDs, play timestamps, user associations)
 
-3. **Concert/Event Moderation**  
-   - *As an admin, I want to review and approve events submitted by promoters, so that I can maintain quality and relevancy of listings.*
+### Aggregated Stats Table
+- Processed metrics (top tracks, top artists, genre distribution, geographic trends)
 
-4. **Analytics Dashboard**  
-   - *As an admin, I want to see platform-wide metrics (e.g., user growth, top artists), so that I can make data-driven decisions.*
+### Concert Events Table
+- Event ID, title, location, date, promoter info, tagging details
 
-5. **API & System Health**  
-   - *As an admin, I want to monitor API call rates and caching performance, so that I can ensure the app stays within quotas and maintains fast responses.*
+### User Preferences & Tags Table
+- User-selected tags, saved concerts, filtering criteria for personalized recommendations
 
-6. **User Feedback & Reporting**  
-   - *As an admin, I want to manage and respond to user-reported issues or feedback, so that I can maintain a positive user experience.*
-
----
-
-## Concert Promoter Users
-
-1. **Promoter Registration & Dashboard**  
-   - *As a concert promoter, I want to log in and access a dedicated promoter dashboard, so that I can manage my events.*
-
-2. **Event Creation & Management**  
-   - *As a promoter, I want to create and edit event listings, so that I can reach the right audience with up-to-date information.*
-
-3. **Analytics & Insights**  
-   - *As a promoter, I want to see how many users have viewed or tagged my events, so that I can gauge event popularity and adjust promotions.*
-
-4. **Targeted Recommendations**  
-   - *As a promoter, I want to customize or suggest events to specific user segments (by genre or location), so that my events reach the most relevant audience.*
-
-5. **Collaboration with Admin**  
-   - *As a promoter, I want to easily contact admins if I encounter issues or need special promotions, so that communication is streamlined.*
-
----
-
-# Data Model
-
-1. **Users Table**  
-   - Columns: User ID, OAuth tokens, email, profile info, role (regular, admin, promoter), and preferences.
-
-2. **Listening History Table**  
-   - Stores records of Spotify activity (track IDs, play timestamps, user associations).
-
-3. **Aggregated Stats Table**  
-   - Holds processed metrics (top tracks, top artists, genre distribution, geographic trends).
-
-4. **Concert Events Table**  
-   - Contains event ID, title, location, date, promoter info, and tagging details.
-
-5. **User Preferences & Tags Table**  
-   - Stores user-selected tags, saved concerts, filtering criteria for personalized recommendations.
-
-6. **API Integration Logs**  
-   - Tracks calls to Spotify and Ticketmaster APIs for caching and performance monitoring.
+### API Integration Logs
+- Tracking calls to Spotify and Ticketmaster APIs for caching and performance monitoring
