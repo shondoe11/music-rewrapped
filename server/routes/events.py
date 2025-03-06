@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from server.app import socketio
 
 events_bp = Blueprint('events', __name__)
 
@@ -19,4 +20,5 @@ def list_events():
 def create_event():
     data = request.get_json()
     #& placeholder first: replace with real logic to fetch events from db later
+    socketio.emit('notification', {'message': f'New event created: {data.get('name', 'Unnamed Event')}'})
     return jsonify({'message': 'Event created', 'event': data}), 201
