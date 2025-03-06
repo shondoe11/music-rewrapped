@@ -6,10 +6,8 @@ class Config(object):
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    #& placeholder connection string first
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'DATABASE_URL', 'postgresql+psycopg://koyeb-adm:npg_vyklGoCdu37T@ep-calm-dawn-a1yfrioo.ap-southeast-1.pg.koyeb.app/koyebdb'
-    )
+   
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -17,6 +15,7 @@ class ProductionConfig(Config):
 
 class TestingConfig(Config):
     TESTING = True
+     #& placeholder connection string first
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         'DATABASE_URL', 'postgresql+psycopg://user:password@localhost/music_rewrapped_test'
     )
