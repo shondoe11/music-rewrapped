@@ -25,10 +25,14 @@ def create_app(config_class=DevelopmentConfig):
     #& model imports here (register with SQLA) important for migration auto-generation
     from .model import User
     #& register blueprints (modular route handling)
+    from .routes.auth import auth_bp
+    app.register_blueprint(auth_bp, url_prefix='/auth')
     from .routes.spotify import spotify_bp
     app.register_blueprint(spotify_bp, url_prefix='/spotify')
     from .routes.events import events_bp
     app.register_blueprint(events_bp, url_prefix='/events')
+    from .routes.home import home_bp
+    app.register_blueprint(home_bp, url_prefix='/home')
     #& simple test route
     @app.route('/')
     def index():
@@ -43,4 +47,4 @@ def handle_connect():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(port=5001)
+    socketio.run(app, port=5001, debug=True)
