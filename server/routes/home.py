@@ -197,7 +197,8 @@ def home_data():
     data = {
         'top_songs': top_songs,
         'top_artists': top_artists,
-        'longest_listening_streak': favorite_genres,
+        'longest_listening_streak': longest_streak,
+        'favorite_genres_evolution': favorite_genres,
         'top_listeners': top_listeners,
         'welcome_message': f'Hi there, {welcome_name}! Scroll down to learn more about your music taste ⬇️'
     }
