@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from datetime import datetime, timedelta, timezone
 from server.extensions import db
-from server.model import ListeningHistory
+from server.model import ListeningHistory, User
 from sqlalchemy import func
 
 home_bp = Blueprint('home', __name__)
@@ -162,6 +162,11 @@ def home_data():
     except ValueError:
         return jsonify({'error': 'Invalid user_id'}), 400
     
+    #& retrieve user record to access display name for personalized greeting
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'user not found'}), 404
+    
     #& time frames (days)
     time_frames = {
         '1_month': 30,
@@ -183,11 +188,17 @@ def home_data():
         'percentile_ranking': get_top_listeners_percentile(user_id)
     }
     
+    #& display_name if avail, else fallback email
+    if user.display_name and user.display_name.strip():
+        welcome_name = user.display_name
+    else:
+        welcome_name = user.email.split('@')[0]
+    
     data = {
         'top_songs': top_songs,
         'top_artists': top_artists,
         'longest_listening_streak': favorite_genres,
         'top_listeners': top_listeners,
-        'welcome_message': 'Hi there! Scroll down to learn more about your music taste ⬇️'
+        'welcome_message': f'Hi there, {welcome_name}! Scroll down to learn more about your music taste ⬇️'
     }
     return jsonify(data)
