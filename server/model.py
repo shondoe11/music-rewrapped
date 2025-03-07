@@ -41,11 +41,11 @@ class ListeningHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     track_id = db.Column(db.String(128))
-    track_name = db.Column(db.String(256))   # Added field for track name
-    artist = db.Column(db.String(256))       # Added field for artist
-    artwork_url = db.Column(db.String(512))    # Added field for artwork URL
-    duration = db.Column(db.Integer)           # Added field for track duration (in seconds)
-    genre = db.Column(db.String(128))          # <-- New column for genre
+    track_name = db.Column(db.String(256))
+    artist = db.Column(db.String(256))   
+    artwork_url = db.Column(db.String(512)) 
+    duration = db.Column(db.Integer)
+    genre = db.Column(db.String(128))
     played_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     #todo add more fields for artist, duration, etc later
     

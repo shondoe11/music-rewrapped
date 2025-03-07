@@ -29,6 +29,8 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(auth_bp, url_prefix='/auth')
     from .routes.spotify import spotify_bp
     app.register_blueprint(spotify_bp, url_prefix='/spotify')
+    from server.routes.sync import sync_bp
+    app.register_blueprint(sync_bp, url_prefix='/sync')
     from .routes.events import events_bp
     app.register_blueprint(events_bp, url_prefix='/events')
     from .routes.home import home_bp
