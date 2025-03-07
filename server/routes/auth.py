@@ -106,6 +106,7 @@ def callback():
     profile_data = profile_response.json()
     spotify_id = profile_data.get('id')
     email = profile_data.get('email')
+    display_name = profile_data.get('display_name')
     
     #& validate user creds, generate tokens, store oauth tokens and user info in db
     from server.model import User
@@ -117,11 +118,13 @@ def callback():
         user.oauth_token = token_info.get('access_token')
         user.refresh_token = token_info.get('refresh_token', user.refresh_token) #~ if given new refresh token
         user.expires_at = expires_at
+        user.display_name = display_name
     else:
         #& create new user record in db
         user = User(
             spotify_id=spotify_id,
             email=email,
+            display_name=display_name,
             role='guest',
             oauth_token=token_info.get('access_token'),
             refresh_token=token_info.get('refresh_token'),
