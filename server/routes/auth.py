@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, redirect, session
-import secrets #& generate random state
+import secrets  #& generate random state
 import os
 import urllib.parse
 import base64
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from server.extensions import db
 
-#& JWT config
+#& jwt config
 JWT_SECRET = os.environ.get('JWT_SECRET', 'default-jwt-secret')
 JWT_ALGORITHM = "HS256"
 
@@ -31,15 +31,15 @@ def login():
     #& generate secure random state string and sign
     raw_state = secrets.token_urlsafe(16)
     state = serializer.dumps(raw_state)
-    session['spotify_oauth_state'] = state #~ store state for later validation
-    #& Spotify auth URL with req query params
+    session['spotify_oauth_state'] = state  #~ store state for later validation
+    #& spotify auth url with req query params
     params = {
         'client_id': SPOTIFY_CLIENT_ID,
         'response_type': 'code',
         'redirect_uri': SPOTIFY_REDIRECT_URI,
         'scope': SCOPES,
         'state': state,
-        'show_dialog': True #! so can open debug & test when user tries login. !!!remove in production.
+        'show_dialog': True  #! so can open debug & test when user tries login. !!!remove in production.
     }
     query_params = urllib.parse.urlencode(params)
     auth_url = f'https://accounts.spotify.com/authorize?{query_params}'
@@ -56,22 +56,27 @@ def callback():
         return jsonify({'error': error}), 400
     if not code:
         return jsonify({'error': 'missing code param'}), 400
-    
+
     #& validate the state
     saved_state = session.get('spotify_oauth_state')
+    if not saved_state:
+        return jsonify({'error': 'state not found in session'}), 400
+
     try:
-        #& validate and check if state match; allow max age 600s
-        serializer.loads(state, max_age=600)
+        #& decode both the received state and stored state to compare their raw values
+        raw_state = serializer.loads(state, max_age=600)
+        raw_saved_state = serializer.loads(saved_state, max_age=600)
     except (BadSignature, SignatureExpired):
         return jsonify({'error': 'state mismatch / expired'}), 400
-    if state != saved_state:
+
+    if raw_state != raw_saved_state:
         return jsonify({'error': 'invalid state'}), 400
-    
+
     #& exchange auth code for access token
     token_url = 'https://accounts.spotify.com/api/token'
     auth_str = f'{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}'
     b64_auth_str = base64.b64encode(auth_str.encode()).decode()
-    
+
     headers = {
         'Authorization': f'Basic {b64_auth_str}',
         'Content-Type': 'application/x-www-form-urlencoded'
@@ -81,17 +86,17 @@ def callback():
         'code': code,
         'redirect_uri': SPOTIFY_REDIRECT_URI
     }
-    
+
     response = requests.post(token_url, headers=headers, data=data)
     if response.status_code != 200:
         return jsonify({
             'error': 'retrieve access token failed',
             'details': response.json()
         }), response.status_code
-        
+
     token_info = response.json()
-    
-    #& take user profile from Spotify
+
+    #& take user profile from spotify
     profile_url = 'https://api.spotify.com/v1/me'
     profile_headers = {
         'Authorization': f"Bearer {token_info.get('access_token')}"
@@ -102,25 +107,22 @@ def callback():
             'error': 'retrieve user profile failed',
             'details': profile_response.json()
         }), profile_response.status_code
-        
+
     profile_data = profile_response.json()
     spotify_id = profile_data.get('id')
     email = profile_data.get('email')
     display_name = profile_data.get('display_name')
-    
+
     #& validate user creds, generate tokens, store oauth tokens and user info in db
     from server.model import User
-    #& try to find existing user by spotify_id first
     user = User.query.filter_by(spotify_id=spotify_id).first()
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=token_info.get('expires_in', 3600))
     if user:
-        #& update tokens in db
         user.oauth_token = token_info.get('access_token')
-        user.refresh_token = token_info.get('refresh_token', user.refresh_token) #~ if given new refresh token
+        user.refresh_token = token_info.get('refresh_token', user.refresh_token)
         user.expires_at = expires_at
         user.display_name = display_name
     else:
-        #& create new user record in db
         user = User(
             spotify_id=spotify_id,
             email=email,
@@ -132,39 +134,37 @@ def callback():
         )
         db.session.add(user)
     db.session.commit()
-    
-    #& generate JWT for auth user, valid 1d for now
-    jwt_payload = {
-        'user_id': user.id,
-        'exp': datetime.now(timezone.utc) + timedelta(days=1)
+
+    session['user'] = {
+        'id': user.id,
+        'spotify_id': user.spotify_id,
+        'email': user.email,
+        'display_name': user.display_name,
+        'role': user.role
     }
-    jwt_token = jwt.encode(jwt_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     
-    return jsonify({
-        'message': 'Login success!',
-        'user': {
-            'id': user.id,
-            'spotify_id': user.spotify_id,
-            'email': user.email,
-            'role': user.role
-        },
-        'token_info': token_info,
-        'jwt': jwt_token #~ return JWT to client for future auth
-    })
+    client_home_url = os.environ.get('CLIENT_HOME_URL', 'http://localhost:5173/home')
+    if client_home_url.endswith('/'):
+        client_home_url = client_home_url[:-1]
+    
+    #? debugging
+    print(f"redirecting to: {client_home_url}")
+    
+    return redirect(client_home_url)
 
 @auth_bp.route('/refresh-token', methods=['GET'])
 def refresh_token():
-    #& user tokens validation and update in db via JWT auth
-    #~ extract JWT from auth header
+    #& user tokens validation and update in db via jwt auth
+    #~ extract jwt from auth header
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer'):
-        return jsonify({'error': 'Auth header missing / invalid'}), 401
+        return jsonify({'error': 'auth header missing / invalid'}), 401
     token = auth_header.split(' ')[1]
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = payload.get('user_id')
     except Exception as e:
-        return jsonify({'error': 'invalid JWT token', 'details': str(e)}), 401
+        return jsonify({'error': 'invalid jwt token', 'details': str(e)}), 401
 
     from server.model import User
     user = User.query.get(user_id)
@@ -182,7 +182,7 @@ def refresh_token():
     response = requests.post(token_url, data=req_body)
     if response.status_code != 200:
         return jsonify({
-            'error': 'Failed to refresh token',
+            'error': 'failed to refresh token',
             'details': response.json()
         }), response.status_code
 
@@ -190,17 +190,24 @@ def refresh_token():
     user.oauth_token = new_token_info.get('access_token')
     user.expires_at = datetime.now(timezone.utc) + timedelta(seconds=new_token_info.get('expires_in', 3600))
     db.session.commit()
-    
-    #& generate new JWT to update expiration
+
+    #& generate new jwt to update expiration
     new_jwt_payload = {
         'user_id': user.id,
         'exp': datetime.now(timezone.utc) + timedelta(days=1)
     }
-    
     new_jwt_token = jwt.encode(new_jwt_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
     return jsonify({
-        'message': 'Token refreshed successfully',
+        'message': 'token refreshed successfully',
         'new_token_info': new_token_info,
         'jwt': new_jwt_token
     })
+
+#! new endpoint to get current user from session
+@auth_bp.route('/user', methods=['GET'])
+def get_current_user():
+    if 'user' in session:
+        return jsonify({'user': session['user']})
+    else:
+        return jsonify({'error': 'not authenticated'}), 401

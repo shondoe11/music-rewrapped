@@ -3,13 +3,14 @@ import os
 load_dotenv()
 #* App factory (Flask app config)
 from flask import Flask
-from server.config import DevelopmentConfig #~ current app config class: can change based on environment
+from server.config import DevelopmentConfig  #~ current app config class: can change based on environment
 
 #* Init Extensions
 from .extensions import db
 from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from flask_session import Session
 
 migrate = Migrate()
 socketio = SocketIO(cors_allowed_origins='*')
@@ -17,11 +18,17 @@ socketio = SocketIO(cors_allowed_origins='*')
 def create_app(config_class=DevelopmentConfig):
     app = Flask(__name__)
     app.config.from_object(config_class)
-    CORS(app)
+    
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = False
+    Session(app)
+    
+    CORS(app, supports_credentials=True)
+    
     #& Init extensions with app context
-    db.init_app(app) 
-    migrate.init_app(app, db) #~ hook Flask-Migrate to app
-    socketio.init_app(app) #~ hook socketIO to app
+    db.init_app(app)
+    migrate.init_app(app, db)  #~ hook Flask-Migrate to app
+    socketio.init_app(app)     #~ hook socketIO to app
     #& model imports here (register with SQLA) important for migration auto-generation
     from .model import User
     #& register blueprints (modular route handling)
@@ -49,4 +56,4 @@ def handle_connect():
 
 if __name__ == '__main__':
     app = create_app()
-    socketio.run(app, port=5001, debug=True)
+    socketio.run(app, port=5001, debug=True, use_reloader=False)
