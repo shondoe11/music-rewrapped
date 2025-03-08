@@ -35,3 +35,14 @@ Thumbs.db
 
 # Log files
 *.log
+
+# celery
+celerybeat-schedule
+celerybeat-schedule.db
+
+# flask
+flask_session/
+
+# ignore migration cache files but keep migration scripts
+migrations/versions/*.pyc
+migrations/versions/__pycache__/
