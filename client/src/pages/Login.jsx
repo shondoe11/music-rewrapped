@@ -38,7 +38,7 @@ const Login = () => {
         className="px-8 py-4 bg-green-500 hover:bg-green-600 rounded-full text-xl font-semibold"
         style={{ fontFamily: "'Circular', sans-serif" }}
       >
-        Login
+        Login with Spotify
       </button>
     </div>
   );
