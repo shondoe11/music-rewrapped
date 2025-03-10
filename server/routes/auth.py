@@ -146,10 +146,7 @@ def callback():
     client_home_url = os.environ.get('CLIENT_HOME_URL', 'http://localhost:5173/home')
     if client_home_url.endswith('/'):
         client_home_url = client_home_url[:-1]
-    
-    #? debugging
-    print(f"redirecting to: {client_home_url}")
-    
+    print(f"redirecting to: {client_home_url}") #? debugging
     return redirect(client_home_url)
 
 @auth_bp.route('/refresh-token', methods=['GET'])
@@ -180,6 +177,7 @@ def refresh_token():
         'client_secret': SPOTIFY_CLIENT_SECRET
     }
     response = requests.post(token_url, data=req_body)
+    print("Refresh response:", response.json()) #? debugging
     if response.status_code != 200:
         return jsonify({
             'error': 'failed to refresh token',
@@ -204,7 +202,6 @@ def refresh_token():
         'jwt': new_jwt_token
     })
 
-#! new endpoint to get current user from session
 @auth_bp.route('/user', methods=['GET'])
 def get_current_user():
     if 'user' in session:
