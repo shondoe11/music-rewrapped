@@ -19,12 +19,11 @@ def get_top_tracks():
     if not user:
         return jsonify({'error': 'user not found'}), 404
 
-    time_frame = request.args.get('time_frame', '1_month')
+    time_frame = request.args.get('time_frame', 'short_term')
     mapping = {
-        '1_month': 'short_term',
-        '3_months': 'medium_term',
-        '6_months': 'medium_term',
-        '1_year': 'long_term'
+        'short_term': 'short_term',
+        'medium_term': 'medium_term',
+        'long_term': 'long_term'
     }
     time_range = mapping.get(time_frame, 'short_term')
 
@@ -72,12 +71,11 @@ def get_top_albums():
     if not user:
         return jsonify({'error': 'user not found'}), 404
 
-    time_frame = request.args.get('time_frame', '1_month')
+    time_frame = request.args.get('time_frame', 'short_term')
     mapping = {
-        '1_month': 'short_term',
-        '3_months': 'medium_term',
-        '6_months': 'medium_term',
-        '1_year': 'long_term'
+        'short_term': 'short_term',
+        'medium_term': 'medium_term',
+        'long_term': 'long_term'
     }
     time_range = mapping.get(time_frame, 'short_term')
 
@@ -127,12 +125,11 @@ def get_top_artists():
     if not user:
         return jsonify({'error': 'user not found'}), 404
 
-    time_frame = request.args.get('time_frame', '1_month')
+    time_frame = request.args.get('time_frame', 'short_term')
     mapping = {
-        '1_month': 'short_term',
-        '3_months': 'medium_term',
-        '6_months': 'medium_term',
-        '1_year': 'long_term'
+        'short_term': 'short_term',
+        'medium_term': 'medium_term',
+        'long_term': 'long_term'
     }
     time_range = mapping.get(time_frame, 'short_term')
 
