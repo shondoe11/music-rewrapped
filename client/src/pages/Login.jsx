@@ -1,45 +1,65 @@
-import React, { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const Login = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_BASE_URL}/auth/user`, {
-          credentials: 'include'
-        });
-        if (response.ok) {
-          toast.success("Authentication success. redirecting...")
-          navigate('/home');
-        }
-      } catch (err) {
-        toast.error("failed to fetch authentication status");
-        console.error("failed to fetch user:", err);
-      }
-    }
-    checkAuth();
-  }, [navigate]);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_BASE_URL}/auth/rewrapped/login`,
+        { username, password },
+        { withCredentials: true }
+        );
 
-  const handleLogin = () => {
-    window.location.href = `${import.meta.env.VITE_BASE_URL}/auth/login`;
+      if (response.data.message) {
+        toast.success(response.data.message);
+        navigate('/profile');
+      } else {
+        toast.info('Login successful');
+      }
+    } catch (error) {
+      console.error('login error:', error.response.data);
+      toast.error(error.response.data.error || 'Login error occurred');
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
-      <h1 className="text-5xl font-bold mb-4" style={{ fontFamily: "'Circular', sans-serif" }}>Music Re-Wrapped</h1>
-      <p className="text-lg mb-8" style={{ fontFamily: "'Circular', sans-serif" }}>
-        Learn more about your music taste with Music Re-Wrapped.
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
+      <h1 className="text-4xl font-bold mb-4">Re-Wrapped Login</h1>
+      <form onSubmit={handleSubmit} className="w-full max-w-sm">
+        <div className="mb-4">
+          <label className="block text-white mb-2">Username</label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full p-2 rounded border border-gray-700 text-black"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-white mb-2">Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-2 rounded border border-gray-700 text-black"
+            required
+          />
+        </div>
+        <button type="submit" className="w-full py-2 bg-green-500 hover:bg-green-600 rounded">
+          Login
+        </button>
+      </form>
+      <p className="mt-4">
+        Don't have an account? <a href="/register" className="text-green-500">Register</a>
       </p>
-      <button 
-        onClick={handleLogin} 
-        className="px-8 py-4 bg-green-500 hover:bg-green-600 rounded-full text-xl font-semibold"
-        style={{ fontFamily: "'Circular', sans-serif" }}
-      >
-        Login with Spotify
-      </button>
     </div>
   );
 };
