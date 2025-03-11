@@ -10,6 +10,8 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 load_dotenv()
 from server.extensions import db
+from server.model import User
+from werkzeug.security import generate_password_hash, check_password_hash
 
 #& jwt config
 JWT_SECRET = os.environ.get('JWT_SECRET', 'default-jwt-secret')
@@ -114,7 +116,6 @@ def callback():
     display_name = profile_data.get('display_name')
 
     #& validate user creds, generate tokens, store oauth tokens and user info in db
-    from server.model import User
     user = User.query.filter_by(spotify_id=spotify_id).first()
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=token_info.get('expires_in', 3600))
     if user:
@@ -163,7 +164,6 @@ def refresh_token():
     except Exception as e:
         return jsonify({'error': 'invalid jwt token', 'details': str(e)}), 401
 
-    from server.model import User
     user = User.query.get(user_id)
     if not user or not user.refresh_token:
         return jsonify({'error': 'user not found / no refresh token available'}), 400
@@ -208,3 +208,66 @@ def get_current_user():
         return jsonify({'user': session['user']})
     else:
         return jsonify({'error': 'not authenticated'}), 401
+    
+#& Re-Wrapped registration
+@auth_bp.route('/rewrapped/register', methods=['POST'])
+def rewrapped_register():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    role_choice = data.get('role')  #~ 'regular' / 'promoter'
+    store_history = data.get('store_listening_history', False)
+
+    if not username or not password or role_choice not in ['regular', 'promoter']:
+        return jsonify({'error': 'Invalid input'}), 400
+
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': 'Username already exists'}), 400
+
+    #& user should already be logged in via Oauth (guest) & user id passed query param
+    user_id = request.args.get('user_id')
+    if user_id:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        #& update existing guest user with registration info
+        user.username = username
+        user.set_password(password)
+        user.role = role_choice
+        user.store_listening_history = store_history
+        db.session.commit()
+        return jsonify({'message': 'Registration successful, user upgraded'}), 200
+    else:
+        #& more for case handling, create new user record if no Spotify user exist
+        new_user = User(
+            username=username,
+            role=role_choice,
+            store_listening_history=store_history,
+            email="",  #~ optional; require email if need
+            spotify_id="",  #~ may be blank for non-OAuth user
+            display_name=username
+        )
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+        return jsonify({'message': 'Registration successful, new user created'}), 201
+    
+#& Re-Wrapped login
+@auth_bp.route('/rewrapped/login', methods=['POST'])
+def rewrapped_login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        return jsonify({'error': 'Invalid input'}), 400
+
+    user = User.query.filter_by(username=username).first()
+    if not user or not user.check_password(password):
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+    #& maybe generate JWT token / set up sesh
+    return jsonify({'message': 'Login successful', 'user': {
+        'id': user.id,
+        'username': user.username,
+        'role': user.role
+    }}), 200
