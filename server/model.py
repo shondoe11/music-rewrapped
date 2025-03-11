@@ -1,6 +1,7 @@
 from .extensions import db
 from datetime import datetime, timezone
 from sqlalchemy.dialects.postgresql import JSONB  #~ using JSONB for JSON storage (if avail)
+from werkzeug.security import generate_password_hash, check_password_hash
 #* define all models here
 
 #& user data schema: store user auth info and preferences
@@ -15,12 +16,20 @@ class User(db.Model):
     refresh_token = db.Column(db.String(512))
     expires_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    
+    username = db.Column(db.String(128), unique=True)
+    password_hash = db.Column(db.String(256))
+    store_listening_history = db.Column(db.Boolean, default=False)
     #& relationships
     listening_histories = db.relationship('ListeningHistory', backref='user', lazy=True)
     aggregated_stats = db.relationship('AggregatedStats', uselist=False, backref='user')
     preferences = db.relationship('UserPreference', uselist=False, backref='user')
-
+    
+    #& pw checker
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+    
     def __repr__(self):
         return f'<User {self.email}>'  #~ self: instance of the class being used, current object instance: https://www.geeksforgeeks.org/self-in-python-class/
     
