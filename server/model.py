@@ -29,7 +29,7 @@ class User(db.Model):
         self.password_hash = generate_password_hash(password)
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+
     def __repr__(self):
         return f'<User {self.email}>'  #~ self: instance of the class being used, current object instance: https://www.geeksforgeeks.org/self-in-python-class/
     
@@ -77,8 +77,8 @@ class AggregatedStats(db.Model):
         return f'<AggregatedStats user:{self.user_id}>'
     
 #& concert event schema: store details of events & concerts
-class ConcertEvent(db.Model):
-    __tablename__ = 'concert_event'
+class Event(db.Model):
+    __tablename__ = 'event'
     
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(256), nullable=False)
@@ -86,10 +86,13 @@ class ConcertEvent(db.Model):
     event_date = db.Column(db.DateTime)
     promoter_info = db.Column(db.String(256))
     tags = db.Column(JSONB)  #~ expected array of tags, store as JSON
+    user_id = db.Column(db.Integer, nullable=True) #~ saved events to user
+    url = db.Column(db.String(512)) #~ store event url
+    image = db.Column(db.String(512)) #~ store img url
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     def __repr__(self):
-        return f'<ConcertEvent {self.title} on {self.event_date}>'
+        return f'<Event {self.title} on {self.event_date}>'
 
 #& API integration schema: logs API calls to external APIs
 class APIIntegrationLog(db.Model):
