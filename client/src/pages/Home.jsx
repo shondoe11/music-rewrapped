@@ -3,6 +3,7 @@ import Dashboard from "../components/Dashboard";
 import { getHomeData } from "../api";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const Home = () => {
   const { user, login } = useAuth();
@@ -21,14 +22,15 @@ const Home = () => {
           const data = await response.json();
           login(data.user);
         } else {
-          window.location.href = `${import.meta.env.VITE_BASE_URL}/auth/login`;
+          toast.error("Authenticate with Spotify first to view 'Home'");
+          navigate('/spotify-login');
         }
       } catch (err) {
         console.error("failed to fetch user:", err);
-        window.location.href = `${import.meta.env.VITE_BASE_URL}/auth/login`;
+        toast.error("Authenticate with Spotify first to view 'Home'");
+        navigate('/spotify-login');
       }
     }
-
     if (!user) {
       fetchUser();
     }
