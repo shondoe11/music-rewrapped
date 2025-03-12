@@ -19,6 +19,9 @@ class User(db.Model):
     username = db.Column(db.String(128), unique=True)
     password_hash = db.Column(db.String(256))
     store_listening_history = db.Column(db.Boolean, default=False)
+    profile_image_url = db.Column(db.String(512))
+    country = db.Column(db.String(64))
+    followers = db.Column(db.Integer)
     #& relationships
     listening_histories = db.relationship('ListeningHistory', backref='user', lazy=True)
     aggregated_stats = db.relationship('AggregatedStats', uselist=False, backref='user')
