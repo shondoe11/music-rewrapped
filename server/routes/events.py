@@ -115,13 +115,19 @@ def all_events():
 #& remove user saved event
 @events_bp.route('/delete/<int:event_id>', methods=['DELETE'])
 def delete_event(event_id):
-    #& event by id & delete from db
     event = Event.query.get(event_id)
     if not event:
         return jsonify({'error': 'Event not found'}), 404
-    db.session.delete(event)
+    #~ clear user association (simulate unsaving the event)
+    event.user_id = None
     db.session.commit()
-    return jsonify({'message': 'Event removed successfully', 'event_id': event_id}), 200
+    #~ case handling delete record from db
+    if not event.promoter_info and not event.user_id:
+        db.session.delete(event)
+        db.session.commit()
+        return jsonify({'message': 'Orphaned event removed successfully', 'event_id': event_id}), 200
+    else:
+        return jsonify({'message': 'Event unsaved successfully', 'event_id': event_id}), 200
 
 #& fetch user saved events
 @events_bp.route('/saved', methods=['GET'])
