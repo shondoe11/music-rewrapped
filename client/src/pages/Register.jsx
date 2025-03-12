@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { useAuth } from '../hooks/useAuth';
 
 const Register = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('regular');
   const [storeHistory, setStoreHistory] = useState(false);
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    //& if user is already logged in && !== guest, prevent accessing register page
+    if (user && user.role !== 'guest') {
+      toast.info("You are already logged in / You already have an account tied to this spotify id!");
+      navigate('/profile');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,7 +97,7 @@ const Register = () => {
         </button>
       </form>
       <p className="mt-4">
-        Don't have an account? <a href="/register" className="text-green-500">Register</a>
+        Already have an account? <a href="/login" className="text-green-500">Login</a>
       </p>
     </div>
   );
