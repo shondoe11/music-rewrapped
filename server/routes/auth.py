@@ -66,7 +66,6 @@ def callback():
         return jsonify({'error': 'state not found in session'}), 400
 
     try:
-        #& decode both the received state and stored state to compare their raw values
         raw_state = serializer.loads(state, max_age=600)
         raw_saved_state = serializer.loads(saved_state, max_age=600)
     except (BadSignature, SignatureExpired):
@@ -115,8 +114,12 @@ def callback():
     spotify_id = profile_data.get('id')
     email = profile_data.get('email')
     display_name = profile_data.get('display_name')
+    images = profile_data.get('images')
+    profile_image_url = images[0].get('url') if images and len(images) > 0 else ''
+    country = profile_data.get('country')
+    followers_data = profile_data.get('followers')
+    followers = followers_data.get('total') if followers_data else None
 
-    #& validate user creds, generate tokens, store oauth tokens and user info in db
     user = User.query.filter_by(spotify_id=spotify_id).first()
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=token_info.get('expires_in', 3600))
     if user:
@@ -124,6 +127,10 @@ def callback():
         user.refresh_token = token_info.get('refresh_token', user.refresh_token)
         user.expires_at = expires_at
         user.display_name = display_name
+        user.email = email
+        user.profile_image_url = profile_image_url
+        user.country = country
+        user.followers = followers
     else:
         user = User(
             spotify_id=spotify_id,
@@ -132,25 +139,30 @@ def callback():
             role='guest',
             oauth_token=token_info.get('access_token'),
             refresh_token=token_info.get('refresh_token'),
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
+            profile_image_url=profile_image_url,
+            country=country,
+            followers=followers
         )
         db.session.add(user)
     db.session.commit()
-
-    #& update sesh with additional username if exists
+    
     session['user'] = {
         'id': user.id,
         'spotify_id': user.spotify_id,
         'email': user.email,
-        'display_name': user.display_name,  # always use Spotify display name
+        'display_name': user.display_name,
         'role': user.role,
-        'username': user.username if user.username else None
+        'username': user.username if user.username else None,
+        'profile_image_url': user.profile_image_url,
+        'country': user.country,
+        'followers': user.followers
     }
     
     client_home_url = os.environ.get('CLIENT_HOME_URL', 'http://localhost:5173/home')
     if client_home_url.endswith('/'):
         client_home_url = client_home_url[:-1]
-    print(f"redirecting to: {client_home_url}") #? debugging
+    print(f"redirecting to: {client_home_url}")  #? debugging
     return redirect(client_home_url)
 
 @auth_bp.route('/refresh-token', methods=['GET'])
