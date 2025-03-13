@@ -93,6 +93,8 @@ class Event(db.Model):
     url = db.Column(db.String(512)) #~ store event url
     image = db.Column(db.String(512)) #~ store img url
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    status = db.Column(db.String(64), default='Pre-Event')
+    is_sponsored = db.Column(db.Boolean, default=False)
     
     def __repr__(self):
         return f'<Event {self.title} on {self.event_date}>'
