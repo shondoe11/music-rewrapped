@@ -204,7 +204,7 @@ def refresh_token():
     user.expires_at = datetime.now(timezone.utc) + timedelta(seconds=new_token_info.get('expires_in', 3600))
     db.session.commit()
 
-    #& generate new jwt to update expiration
+    #~ generate new jwt to update expiration
     new_jwt_payload = {
         'user_id': user.id,
         'exp': datetime.now(timezone.utc) + timedelta(days=1)
@@ -225,37 +225,54 @@ def get_current_user():
         return jsonify({'error': 'not authenticated'}), 401
     
 #& Re-Wrapped registration
+@auth_bp.route('/rewrapped/register', methods=['POST', 'OPTIONS'])
 def rewrapped_register():
+    #~ handle preflight OPTIONS req
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    #~ get data frm req
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
     role_choice = data.get('role')  #~ 'regular' / 'promoter'
     store_history = data.get('store_listening_history', False)
     
-    #& password validation check
+    #~ pw validation check
     if not password or len(password) < 8 or not re.search(r'[A-Z]', password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         return jsonify({'error': 'Password must be at least 8 characters long, contain at least one uppercase letter and one special character'}), 400
 
     if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already exists'}), 400
 
-    #& get current user from session
+    #~ get current user frm sesh
     user_info = session.get('user')
     if user_info and user_info.get('id'):
         user_id = user_info.get('id')
         user = User.query.get(user_id)
-        #& if user already has username, they are already registered
         if user.username:
             return jsonify({'error': 'You are already logged in / you already have an account tied to this Spotify ID!'}), 400
-        #& update existing guest user with registration info
+        #~ update existing guest user with registration info
         user.username = username
         user.set_password(password)
         user.role = role_choice
         user.store_listening_history = store_history
         db.session.commit()
-        return jsonify({'message': 'Registration successful, user upgraded'}), 200
+        #~ update session data with the new user info
+        session['user'] = {
+            'id': user.id,
+            'spotify_id': user.spotify_id,
+            'email': user.email,
+            'display_name': user.display_name,
+            'role': user.role,
+            'username': user.username,
+            'profile_image_url': user.profile_image_url,
+            'country': user.country,
+            'followers': user.followers
+        }
+        return jsonify({'message': 'Registration successful, user upgraded', 'user': session['user']}), 200
     else:
-        #& handle case for no oauth user sesh
+        #~ oauth user sesh case handling
         new_user = User(
             username=username,
             role=role_choice,
@@ -267,7 +284,19 @@ def rewrapped_register():
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
-        return jsonify({'message': 'Registration successful, new user created'}), 201
+        #~ update session data with the new user info
+        session['user'] = {
+            'id': new_user.id,
+            'spotify_id': new_user.spotify_id,
+            'email': new_user.email,
+            'display_name': new_user.display_name,
+            'role': new_user.role,
+            'username': new_user.username,
+            'profile_image_url': new_user.profile_image_url,
+            'country': new_user.country,
+            'followers': new_user.followers
+        }
+        return jsonify({'message': 'Registration successful, new user created', 'user': session['user']}), 201
 
 #& Re-Wrapped login
 @auth_bp.route('/rewrapped/login', methods=['POST'])
