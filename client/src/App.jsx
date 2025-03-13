@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
 import Events from './pages/Events';
+import PromoterPanel from './pages/PromoterPanel';
 
 function App() {
   return (
@@ -17,9 +18,10 @@ function App() {
         <Route path='/spotify-login' element={<SpotifyLogin />} />
         <Route path='/login' element={<Login />} />
         <Route path='/register' element={<Register />} />
+        <Route path='/profile' element={<Profile />} />
         <Route path='/home' element={<Home />} />
         <Route path='/events' element={<Events />} />
-        <Route path='/profile' element={<Profile />} />
+        <Route path="/promoter-panel" element={<PromoterPanel />} />
       </Routes>
     </Router>
   )
