@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from server.app import socketio
 from server.extensions import db
-from server.model import Event
+from server.model import Event, SavedEvent
 from datetime import datetime
 import os
 import requests
@@ -35,7 +35,11 @@ def save_event():
     if not user_id:
         return jsonify({'error': 'user_id is required'}), 400
 
-    #& date string to datetime conversion
+    title = data.get('name') or data.get('title')
+    if not title:
+        return jsonify({'error': 'Event title is required'}), 400
+
+    #~ date string to datetime conversion
     event_date_str = data.get('date')
     event_date = None
     if event_date_str:
@@ -44,34 +48,44 @@ def save_event():
         except Exception as e:
             pass
 
-    #& include url if provided saved events have clickable titles
-    new_event = Event(
-        title=data.get('name'),
-        location=data.get('location'),
-        event_date=event_date,
-        promoter_info=data.get('promoter_info', ''),
-        tags=data.get('tags', []),
-        user_id=user_id,  #~ store user association
-        url=data.get('url', ''),  #~ store event url if have
-        image=data.get('image', '')  #~ store event image if have
-    )
-    db.session.add(new_event)
-    db.session.commit()
+    #~ event checker (by title and location).
+    event = Event.query.filter_by(title=title, location=data.get('location')).first()
+    if not event:
+        #~ create new event record
+        event = Event(
+            title=title,
+            location=data.get('location'),
+            event_date=event_date,
+            promoter_info=data.get('promoter_info', ''),
+            tags=data.get('tags', []),
+            url=data.get('url', ''),
+            image=data.get('image', '')
+        )
+        db.session.add(event)
+        db.session.commit()
+
+    #~ create new saved event record if not already saved by this user
+    existing = SavedEvent.query.filter_by(user_id=user_id, event_id=event.id).first()
+    if not existing:
+        saved = SavedEvent(user_id=user_id, event_id=event.id)
+        db.session.add(saved)
+        db.session.commit()
+
     return jsonify({
         'message': 'Event saved successfully',
         'event': {
-            'id': new_event.id,
-            'name': new_event.title,
-            'location': new_event.location,
-            'date': new_event.event_date.isoformat() if new_event.event_date else None,
-            'promoter_info': new_event.promoter_info,
-            'tags': new_event.tags,
-            'url': new_event.url,
-            'image': new_event.image
+            'id': event.id,
+            'name': event.title,
+            'location': event.location,
+            'date': event.event_date.isoformat() if event.event_date else None,
+            'promoter_info': event.promoter_info,
+            'tags': event.tags,
+            'url': event.url,
+            'image': event.image
         }
     }), 201
-    
-#& all event APIs
+
+#& GET /events/all: fetch external events and recommended (sponsored) events separately
 @events_bp.route('/all', methods=['GET'])
 def all_events():
     country_code = request.args.get('countryCode', 'SG')
@@ -84,7 +98,7 @@ def all_events():
     jambase_api_key = os.environ.get('JAMBASE_API_KEY')
     jambase_url = f"https://www.jambase.com/jb-api/v1/events?apikey={jambase_api_key}&geoCountryIso2={country_code}"
 
-    events_combined = []
+    external_events = []
     errors = {}
     
     #& fetch ticketmaster
@@ -93,7 +107,7 @@ def all_events():
         tm_response.raise_for_status()
         tm_data = tm_response.json()
         if tm_data and tm_data.get('_embedded') and tm_data['_embedded'].get('events'):
-            events_combined.extend(tm_data['_embedded']['events'])
+            external_events.extend(tm_data['_embedded']['events'])
     except Exception as e:
         errors['ticketmaster'] = str(e)
     
@@ -103,32 +117,56 @@ def all_events():
         jambase_response.raise_for_status()
         jambase_data = jambase_response.json()
         if jambase_data and jambase_data.get('events'):
-            events_combined.extend(jambase_data['events'])
+            external_events.extend(jambase_data['events'])
     except Exception as e:
         errors['jambase'] = str(e)
     
+    #& fetch internal sponsored events from db (recommended events)
+    internal_sponsored = Event.query.filter_by(is_sponsored=True).all()
+    recommended_events = []
+    for ev in internal_sponsored:
+        recommended_events.append({
+            'id': ev.id,
+            'title': ev.title,
+            'location': ev.location,
+            'event_date': ev.event_date.isoformat() if ev.event_date else None,
+            'status': ev.status,
+            'promoter_info': ev.promoter_info,
+            'is_sponsored': ev.is_sponsored,
+            'target_country': ev.target_country,
+            'target_genre_interest': ev.target_genre_interest,
+            'target_artist_interest': ev.target_artist_interest,
+            'listening_threshold': ev.listening_threshold,
+            'target_roles': ev.target_roles
+        })
+    
     return jsonify({
-        'events': events_combined,
+        'recommended_events': recommended_events,
+        'external_events': external_events,
         'errors': errors
     })
 
 #& remove user saved event
-@events_bp.route('/delete/<int:event_id>', methods=['DELETE'])
 def delete_event(event_id):
-    event = Event.query.get(event_id)
-    if not event:
-        return jsonify({'error': 'Event not found'}), 404
-    #~ clear user association (simulate unsaving the event)
-    event.user_id = None
+    #~ delete saved_event record(s) for this event
+    saved = SavedEvent.query.filter_by(event_id=event_id).all()
+    if not saved:
+        return jsonify({'error': 'Saved event not found'}), 404
+    for s in saved:
+        db.session.delete(s)
     db.session.commit()
-    #~ case handling delete record from db
-    if not event.promoter_info and not event.user_id:
-        db.session.delete(event)
-        db.session.commit()
-        return jsonify({'message': 'Orphaned event removed successfully', 'event_id': event_id}), 200
-    else:
-        return jsonify({'message': 'Event unsaved successfully', 'event_id': event_id}), 200
+    
+    #~ check if event should be removed from event table
+    event = Event.query.get(event_id)
+    if event:
+        #~ if no owner: no user_id, no promoter_info (empty or whitespace), and is_sponsored is false,
+        #~ then delete the event record entirely
+        if (not event.user_id) and (not event.promoter_info or event.promoter_info.strip() == '') and (event.is_sponsored is False):
+            db.session.delete(event)
+            db.session.commit()
+            return jsonify({'message': 'Event unsaved and removed successfully', 'event_id': event_id}), 200
 
+    return jsonify({'message': 'Event unsaved successfully', 'event_id': event_id}), 200
 #& fetch user saved events
 @events_bp.route('/saved', methods=['GET'])
 def get_saved_events():
@@ -139,7 +177,8 @@ def get_saved_events():
         user_id_int = int(user_id) #~ convert uid to int as req by model
     except ValueError:
         return jsonify({'error': 'Invalid user_id format'}), 400
-    saved = Event.query.filter_by(user_id=user_id_int).all()
+    # Perform a join between SavedEvent and Event to get current event details.
+    saved = db.session.query(Event).join(SavedEvent, Event.id == SavedEvent.event_id).filter(SavedEvent.user_id == user_id_int).all()
     saved_list = []
     for e in saved:
         saved_list.append({
@@ -153,3 +192,156 @@ def get_saved_events():
             'image': e.image
         })
     return jsonify({'events': saved_list})
+
+#& fetch all sponsored events and submit/update promoter event
+@events_bp.route('/promoter', methods=['GET', 'POST'])
+def promoter_events():
+    if request.method == 'GET':
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'user_id is required'}), 400
+        try:
+            user_id_int = int(user_id)
+        except ValueError:
+            return jsonify({'error': 'Invalid user_id format'}), 400
+        events = Event.query.filter_by(promoter_id=user_id_int).all()
+        events_list = []
+        for ev in events:
+            events_list.append({
+                'id': ev.id,
+                'title': ev.title,
+                'location': ev.location,
+                'event_date': ev.event_date.isoformat() if ev.event_date else None,
+                'status': ev.status,
+                'views': getattr(ev, 'views', 0),
+                'saves': getattr(ev, 'saves', 0),
+                'tags': ev.tags,
+                'engagement': getattr(ev, 'engagement', 0),
+                'promoter_info': ev.promoter_info,
+                'is_sponsored': ev.is_sponsored,
+                'target_country': ev.target_country,
+                'target_genre_interest': ev.target_genre_interest,
+                'target_artist_interest': ev.target_artist_interest,
+                'listening_threshold': ev.listening_threshold,
+                'target_roles': ev.target_roles
+            })
+        return jsonify({'events': events_list})
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        user_id = data.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'user_id is required'}), 400
+
+        #& combine date & time fields into proper datetime
+        event_date = None
+        event_date_str = data.get('date')
+        time_str = data.get('time')
+        if event_date_str:
+            try:
+                if time_str:
+                    event_date = datetime.fromisoformat(f"{event_date_str}T{time_str}")
+                else:
+                    event_date = datetime.fromisoformat(event_date_str)
+            except Exception:
+                pass
+
+        new_event = Event(
+            title=data.get('title'),
+            location=data.get('location'),
+            event_date=event_date,
+            promoter_info='',  #~ to set below
+            tags=data.get('tags', []),
+            promoter_id=user_id,  #~ set promoter_id instead of user_id
+            url=data.get('url', ''),
+            image=data.get('image', ''),
+            status='Pre-Event',
+            target_country=data.get('targetCountry'),
+            target_genre_interest=data.get('targetGenreInterest'),
+            target_artist_interest=data.get('targetArtistInterest'),
+            listening_threshold=int(data.get('listeningThreshold')) if data.get('listeningThreshold') else None,
+            target_roles=data.get('targetRoles', [])
+        )
+        #& if event submitted by promoter role, mark as sponsored
+        if data.get('promoter_info') or True:  #~ condition adjustable
+            new_event.promoter_info = data.get('promoter_info') or "Promoter: " + str(user_id)
+            new_event.is_sponsored = True
+
+        db.session.add(new_event)
+        db.session.commit()
+        return jsonify({'message': 'Promoter event submitted successfully', 'event': {
+            'id': new_event.id,
+            'title': new_event.title,
+            'location': new_event.location,
+            'event_date': new_event.event_date.isoformat() if new_event.event_date else None,
+            'status': new_event.status,
+            'promoter_info': new_event.promoter_info,
+            'is_sponsored': new_event.is_sponsored,
+            'target_country': new_event.target_country,
+            'target_genre_interest': new_event.target_genre_interest,
+            'target_artist_interest': new_event.target_artist_interest,
+            'listening_threshold': new_event.listening_threshold,
+            'target_roles': new_event.target_roles
+        }}), 201
+
+#& update promoter event details
+@events_bp.route('/promoter/<int:event_id>', methods=['PUT'])
+def update_promoter_event(event_id):
+    event = Event.query.get(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+    data = request.get_json()
+    event.title = data.get('title', event.title)
+    event.location = data.get('location', event.location)
+    date_str = data.get('date')
+    time_str = data.get('time')
+    if date_str:
+        try:
+            if time_str:
+                event.event_date = datetime.fromisoformat(f"{date_str}T{time_str}")
+            else:
+                event.event_date = datetime.fromisoformat(date_str)
+        except Exception:
+            pass
+    event.description = data.get('description', getattr(event, 'description', ''))
+    event.status = data.get('status', event.status)
+    #~ make sure event remains sponsored when updated by promoter
+    event.is_sponsored = True
+    event.promoter_info = data.get('promoter_info', event.promoter_info)
+    #~ update targeting fields if provided
+    event.target_country = data.get('targetCountry', event.target_country)
+    event.target_genre_interest = data.get('targetGenreInterest', event.target_genre_interest)
+    event.target_artist_interest = data.get('targetArtistInterest', event.target_artist_interest)
+    if data.get('listeningThreshold'):
+        try:
+            event.listening_threshold = int(data.get('listeningThreshold'))
+        except Exception:
+            pass
+    event.target_roles = data.get('targetRoles', event.target_roles)
+    db.session.commit()
+    return jsonify({'message': 'Event updated successfully', 'event': {
+        'id': event.id,
+        'title': event.title,
+        'location': event.location,
+        'event_date': event.event_date.isoformat() if event.event_date else None,
+        'status': event.status,
+        'promoter_info': event.promoter_info,
+        'is_sponsored': event.is_sponsored,
+        'target_country': event.target_country,
+        'target_genre_interest': event.target_genre_interest,
+        'target_artist_interest': event.target_artist_interest,
+        'listening_threshold': event.listening_threshold,
+        'target_roles': event.target_roles
+    }}), 200
+
+@events_bp.route('/promoter/<int:event_id>', methods=['DELETE'])
+def delete_promoter_event(event_id):
+    event = Event.query.get(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+    #~ check if is promoter event verify set promoter_id
+    if not event.promoter_id:
+        return jsonify({'error': 'Not a promoter event'}), 400
+    db.session.delete(event)
+    db.session.commit()
+    return jsonify({'message': 'Event deleted successfully', 'event_id': event_id}), 200
