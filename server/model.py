@@ -90,6 +90,7 @@ class Event(db.Model):
     location = db.Column(db.String(256))
     event_date = db.Column(db.DateTime)
     promoter_info = db.Column(db.String(256))
+    details = db.Column(db.String(1024))
     tags = db.Column(JSONB)  #~ tags arr, store as JSON
     user_id = db.Column(db.Integer, nullable=True)  #~ saved events to user (if duplicated, not used in join approach)
     promoter_id = db.Column(db.Integer, nullable=True)
