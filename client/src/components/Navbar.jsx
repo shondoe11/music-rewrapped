@@ -47,6 +47,11 @@ const Navbar = () => {
             <Link to="/events" className="hover:text-green-500">
               Events
             </Link>
+            { !hideAuthLinks && user && user.role === 'promoter' && (
+              <Link to="/promoter-panel" className="hover:text-green-500">
+                Promoter Panel
+              </Link>
+            )}
             { !hideAuthLinks && user && (
               user.role !== 'guest' ? (
                 <>
@@ -58,7 +63,6 @@ const Navbar = () => {
                   </button>
                 </>
               ) : (
-                //& user is authenticated with Spotify but still a guest – show upgrade option
                 <Link to="/register" className="hover:text-green-500">
                   Upgrade Account
                 </Link>
@@ -92,6 +96,11 @@ const Navbar = () => {
             <Link to="/events" className="block px-3 py-2 rounded-md hover:bg-gray-700">
               Events
             </Link>
+            { !hideAuthLinks && user && user.role === 'promoter' && (
+              <Link to="/promoter-panel" className="block px-3 py-2 rounded-md hover:bg-gray-700">
+                Promoter Panel
+              </Link>
+            )}
             { !hideAuthLinks && user && (
               user.role !== 'guest' ? (
                 <>
@@ -103,7 +112,6 @@ const Navbar = () => {
                   </button>
                 </>
               ) : (
-                //& user is authenticated with Spotify but still a guest – show upgrade option
                 <Link to="/register" className="block px-3 py-2 rounded-md hover:bg-gray-700">
                   Upgrade Account
                 </Link>
