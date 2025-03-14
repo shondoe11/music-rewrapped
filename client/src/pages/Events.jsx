@@ -142,7 +142,8 @@ const Events = () => {
                 ? (eventData.dates.start.dateTime || eventData.dates.start.localDate)
                 : (eventData.startDate || eventData.date || null)),
         url: eventData.url || '',
-        image: getEventImage(eventData) || ''
+        image: getEventImage(eventData) || '',
+        details: eventData.details || ''
       };
       const response = await axios.post(
         `${import.meta.env.VITE_BASE_URL}/events/save`,
@@ -195,7 +196,12 @@ const Events = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {recommended.map(event => (
                 <div key={event.id} className="border rounded p-4 bg-gray-800 shadow">
-                  <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-xl font-bold mb-2 block hover:text-green-500">
+                  <a
+                    href={event.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xl font-bold mb-2 block hover:text-green-500"
+                  >
                     {event.title}
                   </a>
                   {getEventImage(event) && (
@@ -207,6 +213,11 @@ const Events = () => {
                   <p className="mb-2">
                     <strong>Date:</strong> {formatRecommendedEventDateTime(event)}
                   </p>
+                  {event.details && (
+                    <p className="mb-2">
+                      <strong>Details:</strong> {event.details}
+                    </p>
+                  )}
                   <button
                     onClick={() => handleSaveEvent(event)}
                     className="mt-2 bg-green-500 hover:bg-green-600 px-3 py-1 rounded"
@@ -220,7 +231,7 @@ const Events = () => {
             <p>No recommended events available.</p>
           )
         ) : (
-          <p>You need to be authenticated with Spotify and a Re-Wrapped user to be able to see tailored events based on your interests.</p>
+          <p>You need to be authenticated with Spotify and then register or log in to see tailored events based on your interests.</p>
         )}
       </section>
       
@@ -245,7 +256,12 @@ const Events = () => {
           {paginatedEvents.length > 0 ? (
             paginatedEvents.map(event => (
               <div key={event.id} className="border rounded p-4 bg-gray-800 shadow">
-                <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-xl font-bold mb-2 block hover:text-green-500">
+                <a
+                  href={event.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xl font-bold mb-2 block hover:text-green-500"
+                >
                   {event.name}
                 </a>
                 {getEventImage(event) && (
@@ -261,6 +277,11 @@ const Events = () => {
                 <p className="mb-2">
                   <strong>Date:</strong> {formatExternalEventDateTime(event)}
                 </p>
+                {event.details && (
+                  <p className="mb-2">
+                    <strong>Details:</strong> {event.details}
+                  </p>
+                )}
                 <button
                   onClick={() => handleSaveEvent(event)}
                   className="mt-2 bg-green-500 hover:bg-green-600 px-3 py-1 rounded"
@@ -275,7 +296,7 @@ const Events = () => {
         </div>
       </section>
       
-      {/* Pagination Controls */}
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center space-x-4 mb-8">
           <button
@@ -307,7 +328,12 @@ const Events = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {savedEvents.map(event => (
                   <div key={event.id} className="border rounded p-4 bg-gray-800 shadow">
-                    <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-xl font-bold mb-2 block hover:text-green-500">
+                    <a
+                      href={event.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xl font-bold mb-2 block hover:text-green-500"
+                    >
                       {event.name}
                     </a>
                     {event.image && (
@@ -323,6 +349,11 @@ const Events = () => {
                     <p className="mb-2">
                       <strong>Date:</strong> {formatRecommendedEventDateTime(event)}
                     </p>
+                    {event.details && (
+                      <p className="mb-2">
+                        <strong>Details:</strong> {event.details}
+                      </p>
+                    )}
                     <button
                       onClick={() => handleDeleteEvent(event.id)}
                       className="mt-2 bg-red-500 hover:bg-red-600 px-3 py-1 rounded"
