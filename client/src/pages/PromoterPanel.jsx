@@ -19,6 +19,7 @@ const PromoterPanel = () => {
     time: '',
     description: '',
     image: '',
+    url: '',
     targetCountry: '',
     targetGenreInterest: '',
     targetArtistInterest: '',
@@ -99,6 +100,7 @@ const PromoterPanel = () => {
             time: '',
             description: '',
             image: '',
+            url: '',
             targetCountry: '',
             targetGenreInterest: '',
             targetArtistInterest: '',
@@ -182,7 +184,9 @@ const PromoterPanel = () => {
                     <tr key={idx} className="text-center">
                       <td className="py-2 px-4 border-b">{event.title}</td>
                       <td className="py-2 px-4 border-b">{event.location}</td>
-                      <td className="py-2 px-4 border-b">{new Date(event.event_date).toLocaleDateString()}</td>
+                      <td className="py-2 px-4 border-b">
+                        {new Date(event.event_date).toLocaleDateString()} {new Date(event.event_date).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                      </td>
                       <td className="py-2 px-4 border-b">{event.status || 'Pre-Event'}</td>
                       <td className="py-2 px-4 border-b">{event.views || 0}</td>
                       <td className="py-2 px-4 border-b">{event.saves || 0}</td>
@@ -220,6 +224,17 @@ const PromoterPanel = () => {
                   onChange={handleEventInputChange}
                   className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
                   placeholder="valid image url"
+                />
+              </div>
+              <div>
+                <label className="block mb-1">Event URL</label>
+                <input
+                  type="text"
+                  name="url"
+                  value={eventForm.url}
+                  onChange={handleEventInputChange}
+                  className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+                  placeholder="valid event url"
                 />
               </div>
               <div>
@@ -358,7 +373,12 @@ const PromoterPanel = () => {
                     <div className="flex justify-between items-center">
                       <div>
                         <h4 className="text-xl font-semibold">{event.title}</h4>
-                        <p>{event.location} | {new Date(event.event_date).toLocaleDateString()}</p>
+                        <p>
+                          {event.location} | {new Date(event.event_date).toLocaleDateString()} {new Date(event.event_date).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                        </p>
+                        {event.details && (
+                          <p className="mt-1">{event.details}</p>
+                        )}
                       </div>
                       <div className="flex space-x-2">
                         <button 
@@ -369,8 +389,9 @@ const PromoterPanel = () => {
                               location: event.location,
                               date: event.event_date ? event.event_date.split('T')[0] : '',
                               time: event.event_date ? event.event_date.split('T')[1].slice(0,5) : '',
-                              description: event.description || '',
+                              details: event.details || '',
                               image: event.image || '',
+                              url: event.url || '',
                               targetCountry: event.target_country || '',
                               targetGenreInterest: event.target_genre_interest || '',
                               targetArtistInterest: event.target_artist_interest || '',
@@ -427,11 +448,11 @@ const PromoterPanel = () => {
                             />
                           </div>
                           <textarea 
-                            name="description"
-                            value={editForm.description}
+                            name="details"
+                            value={editForm.details}
                             onChange={handleEditChange}
                             className="w-full p-2 rounded border bg-gray-800 text-green-500"
-                            placeholder="Description"
+                            placeholder="Details"
                           ></textarea>
                           <input 
                             type="text"
@@ -439,7 +460,15 @@ const PromoterPanel = () => {
                             value={editForm.image}
                             onChange={handleEditChange}
                             className="w-full p-2 rounded border bg-gray-800 text-green-500"
-                            placeholder="Image URL"
+                            placeholder="Event Image URL"
+                          />
+                          <input 
+                            type="text"
+                            name="url"
+                            value={editForm.url}
+                            onChange={handleEditChange}
+                            className="w-full p-2 rounded border bg-gray-800 text-green-500"
+                            placeholder="Event URL"
                           />
                           <input 
                             type="text"
