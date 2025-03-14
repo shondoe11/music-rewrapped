@@ -5,43 +5,66 @@ import { useAuth } from '../hooks/useAuth';
 
 const Events = () => {
   const { user } = useAuth();
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState([]); 
+  const [recommended, setRecommended] = useState([]); 
   const [savedEvents, setSavedEvents] = useState([]);
   const [country, setCountry] = useState('SG');
   const [inputCode, setInputCode] = useState('SG');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-  //& helper function - extract event date as date object
-  const getEventDate = (event) => {
+  //& recommended events: format using local time so promoter published time is preserved
+  const formatRecommendedEventDateTime = (event) => {
+    //~ event.event_date if avail, else fallback event.date
+    const dateStr = event.event_date || event.date;
+    if (!dateStr) return '';
+    const dateObj = new Date(dateStr);
+    const day = dateObj.getDate();
+    const monthIndex = dateObj.getMonth();
+    const year = dateObj.getFullYear();
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    let hours = dateObj.getHours();
+    const minutes = dateObj.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    //~ mins formatting
+    const trimmedTime = minutes === 0 ? `${hours} ${ampm}` : `${hours}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}`;
+    return `${day} ${monthNames[monthIndex]} ${year}, ${trimmedTime}`;
+  };
+
+  //& external events: format using local time as provided by the API
+  const formatExternalEventDateTime = (event) => {
+    let dateStr = null;
     if (event.dates && event.dates.start) {
-      if (event.dates.start.dateTime) {
-        return new Date(event.dates.start.dateTime);
-      } else if (event.dates.start.localDate) {
-        return new Date(event.dates.start.localDate);
-      }
+      dateStr = event.dates.start.dateTime || event.dates.start.localDate;
+    } else if (event.startDate) {
+      dateStr = event.startDate;
+    } else if (event.date) {
+      dateStr = event.date;
     }
-    if (event.startDate) {
-      return new Date(event.startDate);
-    }
-    if (event.date) {
-      return new Date(event.date);
-    }
-    return new Date();
+    if (!dateStr) return '';
+    const dateObj = new Date(dateStr);
+    const day = dateObj.getDate();
+    const monthIndex = dateObj.getMonth();
+    const year = dateObj.getFullYear();
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    let hours = dateObj.getHours();
+    const minutes = dateObj.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    const trimmedTime = minutes === 0 ? `${hours} ${ampm}` : `${hours}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}`;
+    return `${day} ${monthNames[monthIndex]} ${year}, ${trimmedTime}`;
   };
 
-  //& date time formatter helper
-  const formatEventDateTime = (event) => {
-    const dateObj = getEventDate(event);
-    const dateOptions = { day: 'numeric', month: 'long', year: 'numeric' };
-    const dateFormatted = dateObj.toLocaleDateString(undefined, dateOptions);
-    let timeFormatted = dateObj.toLocaleTimeString(undefined, { hour: 'numeric', hour12: true }).toUpperCase();
-    //~ remove mins if === ":00"
-    timeFormatted = timeFormatted.replace(/:00/, '');
-    return `${dateFormatted}, ${timeFormatted}`;
-  };
-
-  //~ event img extraction helper
+  //& event image extraction helper.
   const getEventImage = (event) => {
     if (event.images && event.images.length > 0) {
       return event.images[0].url;
@@ -56,15 +79,16 @@ const Events = () => {
       try {
         const url = `${import.meta.env.VITE_BASE_URL}/events/all?countryCode=${country}`;
         const response = await axios.get(url, { withCredentials: true });
-        if (response.data && response.data.events && response.data.events.length > 0) {
-          const sortedEvents = response.data.events.sort(
-            (a, b) => getEventDate(a) - getEventDate(b)
-          );
-          setEvents(sortedEvents);
-          setCurrentPage(1); //~ reset page on new fetch
-        } else {
-          toast.info('No events found from external sources');
-          setEvents([]);
+        if (response.data) {
+          if (response.data.external_events && response.data.external_events.length > 0) {
+            setEvents(response.data.external_events);
+          } else {
+            toast.info('No external events found from external sources');
+            setEvents([]);
+          }
+          if (response.data.recommended_events && response.data.recommended_events.length > 0) {
+            setRecommended(response.data.recommended_events);
+          }
         }
       } catch (error) {
         console.error('Error fetching events:', error);
@@ -74,6 +98,7 @@ const Events = () => {
     fetchEvents();
   }, [country]);
 
+  //& fetch saved events on load & also when recommended events update
   useEffect(() => {
     const fetchSavedEvents = async () => {
       if (user && user.id) {
@@ -90,9 +115,9 @@ const Events = () => {
       }
     };
     fetchSavedEvents();
-  }, [user]);
+  }, [user, recommended]);
 
-  //& handle save event; persist via API endpoint
+  //& handle save event, persist via API endpoint
   const handleSaveEvent = async (eventData) => {
     if (!user) {
       toast.error('Please authenticate with Spotify and then register or log in to save events.');
@@ -105,17 +130,19 @@ const Events = () => {
     try {
       const payload = {
         user_id: user.id,
-        name: eventData.name,
+        title: eventData.title || eventData.name, //~ use title; fallback to name.
         location: eventData._embedded && eventData._embedded.venues
           ? eventData._embedded.venues[0].name
           : (typeof eventData.location === 'object' && eventData.location !== null
               ? eventData.location.name
               : eventData.location || 'N/A'),
-        date: eventData.dates && eventData.dates.start
-          ? eventData.dates.start.localDate
-          : (eventData.startDate || eventData.date || null),
-        url: eventData.url || '',  //! include event url if provided
-        image: getEventImage(eventData) || ''  //! store event image
+        //~ prefer eventData.event_date for promoter events; otherwise use external date info
+        date: eventData.event_date ||
+              (eventData.dates && eventData.dates.start
+                ? (eventData.dates.start.dateTime || eventData.dates.start.localDate)
+                : (eventData.startDate || eventData.date || null)),
+        url: eventData.url || '',
+        image: getEventImage(eventData) || ''
       };
       const response = await axios.post(
         `${import.meta.env.VITE_BASE_URL}/events/save`,
@@ -123,7 +150,7 @@ const Events = () => {
         { withCredentials: true }
       );
       if (response.data && response.data.event) {
-        setSavedEvents((prev) => [...prev, response.data.event]);
+        setSavedEvents(prev => [...prev, response.data.event]);
         toast.success(response.data.message);
       }
     } catch (error) {
@@ -132,60 +159,92 @@ const Events = () => {
     }
   };
 
-  //& handle remove event; call backend to delete and update state
-  const handleRemoveEvent = async (eventId) => {
+  //& handle delete saved event.
+  const handleDeleteEvent = async (eventId) => {
     try {
-      await axios.delete(`${import.meta.env.VITE_BASE_URL}/events/delete/${eventId}`, { withCredentials: true });
-      setSavedEvents((prev) => prev.filter((e) => e.id !== eventId));
-      toast.success('Event removed successfully');
+      const response = await axios.delete(`${import.meta.env.VITE_BASE_URL}/events/delete/${eventId}`, { withCredentials: true });
+      if (response.data && response.data.message) {
+        toast.success(response.data.message);
+        setSavedEvents(prev => prev.filter(e => e.id !== eventId));
+      }
     } catch (error) {
-      console.error('Error removing event:', error.response.data);
-      toast.error(error.response.data.error || 'Failed to remove event');
+      console.error('Error deleting event:', error.response?.data || error);
+      toast.error(error.response?.data?.error || 'Failed to delete event');
     }
   };
 
-  const handleSearch = () => {
-    if (inputCode && inputCode.length === 2) {
-      setCountry(inputCode.toUpperCase());
-    } else {
-      toast.error('Please enter a valid 2-letter country ISO code');
-    }
-  };
-
-  //& pagination logic
+  //& pagination logic.
   const totalPages = Math.ceil(events.length / itemsPerPage);
   const paginatedEvents = events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  //& country search handler.
+  const handleCountrySearch = () => {
+    setCountry(inputCode.toUpperCase());
+    setCurrentPage(1);
+  };
 
   return (
     <div className="p-4 bg-gray-900 text-white min-h-screen">
       <h1 className="text-4xl font-bold mb-6">Events</h1>
       
-      {/* Country Filter Input */}
-      <div className="mb-4">
-        <label className="mr-2 font-semibold">Enter 2-letter Country ISO Code:</label>
-        <input
-          type="text"
-          value={inputCode}
-          onChange={(e) => setInputCode(e.target.value)}
-          placeholder="e.g. US, SG, GB"
-          className="bg-gray-800 text-white p-2 rounded mr-2 w-min"
-          maxLength={2}
-        />
-        <button
-          onClick={handleSearch}
-          className="bg-green-500 hover:bg-green-600 px-3 py-1 rounded"
-        >
-          Search
-        </button>
-      </div>
+      {/* Recommended */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Recommended</h2>
+        {user && user.role !== 'guest' ? (
+          recommended.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recommended.map(event => (
+                <div key={event.id} className="border rounded p-4 bg-gray-800 shadow">
+                  <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-xl font-bold mb-2 block hover:text-green-500">
+                    {event.title}
+                  </a>
+                  {getEventImage(event) && (
+                    <img src={getEventImage(event)} alt={event.title} className="mb-2 w-full h-auto rounded" />
+                  )}
+                  <p className="mb-1">
+                    <strong>Location:</strong> {event.location}
+                  </p>
+                  <p className="mb-2">
+                    <strong>Date:</strong> {formatRecommendedEventDateTime(event)}
+                  </p>
+                  <button
+                    onClick={() => handleSaveEvent(event)}
+                    className="mt-2 bg-green-500 hover:bg-green-600 px-3 py-1 rounded"
+                  >
+                    Save
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No recommended events available.</p>
+          )
+        ) : (
+          <p>You need to be authenticated with Spotify and a Re-Wrapped user to be able to see tailored events based on your interests.</p>
+        )}
+      </section>
       
       {/* Event Listings */}
-      <section className="mb-8">
+      <section className="mb-4">
         <h2 className="text-2xl font-semibold mb-4">Event Listings</h2>
+        <div className="mb-4 flex items-center">
+          <label className="mr-2 font-semibold">Enter 2-letter Country ISO Code:</label>
+          <input
+            type="text"
+            value={inputCode}
+            onChange={(e) => setInputCode(e.target.value)}
+            placeholder="e.g. SG"
+            className="bg-gray-800 text-green-500 text-xl p-1 rounded border border-gray-800 focus:border-green-500 focus:outline-none w-20"
+            maxLength={2}
+          />
+          <button onClick={handleCountrySearch} className="bg-green-500 hover:bg-green-600 px-3 py-1 rounded">
+            Search
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {paginatedEvents.length > 0 ? (
-            paginatedEvents.map((event) => (
-              <div key={event.id || event.identifier} className="border rounded p-4 bg-gray-800 shadow">
+            paginatedEvents.map(event => (
+              <div key={event.id} className="border rounded p-4 bg-gray-800 shadow">
                 <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-xl font-bold mb-2 block hover:text-green-500">
                   {event.name}
                 </a>
@@ -193,16 +252,14 @@ const Events = () => {
                   <img src={getEventImage(event)} alt={event.name} className="mb-2 w-full h-auto rounded" />
                 )}
                 <p className="mb-1">
-                  <strong>Location:</strong>{' '}
-                  {event._embedded && event._embedded.venues
+                  <strong>Location:</strong> {event._embedded && event._embedded.venues
                     ? event._embedded.venues[0].name
                     : (typeof event.location === 'object' && event.location !== null
                         ? event.location.name
                         : event.location || 'N/A')}
                 </p>
                 <p className="mb-2">
-                  <strong>Date:</strong>{' '}
-                  {formatEventDateTime(event)}
+                  <strong>Date:</strong> {formatExternalEventDateTime(event)}
                 </p>
                 <button
                   onClick={() => handleSaveEvent(event)}
@@ -222,7 +279,7 @@ const Events = () => {
       {totalPages > 1 && (
         <div className="flex justify-center space-x-4 mb-8">
           <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
             className="bg-gray-800 hover:bg-gray-700 px-3 py-1 rounded"
             disabled={currentPage === 1}
           >
@@ -232,7 +289,7 @@ const Events = () => {
             Page {currentPage} of {totalPages}
           </span>
           <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
             className="bg-gray-800 hover:bg-gray-700 px-3 py-1 rounded"
             disabled={currentPage === totalPages}
           >
@@ -241,38 +298,36 @@ const Events = () => {
         </div>
       )}
       
-      {/* My Saved Listings */}
+      {/* Saved Listings */}
       <section>
         <h2 className="text-2xl font-semibold mb-4">My Saved Listings</h2>
         {user ? (
           user.role !== 'guest' ? (
             savedEvents.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {savedEvents.map((event) => (
+                {savedEvents.map(event => (
                   <div key={event.id} className="border rounded p-4 bg-gray-800 shadow">
                     <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-xl font-bold mb-2 block hover:text-green-500">
                       {event.name}
                     </a>
-                    {getEventImage(event) && (
-                      <img src={getEventImage(event)} alt={event.name} className="mb-2 w-full h-auto rounded" />
+                    {event.image && (
+                      <img src={event.image} alt={event.name} className="mb-2 w-full h-auto rounded" />
                     )}
                     <p className="mb-1">
-                      <strong>Location:</strong>{' '}
-                      {event._embedded && event._embedded.venues
+                      <strong>Location:</strong> {event._embedded && event._embedded.venues
                         ? event._embedded.venues[0].name
                         : (typeof event.location === 'object' && event.location !== null
                             ? event.location.name
                             : event.location || 'N/A')}
                     </p>
                     <p className="mb-2">
-                      <strong>Date:</strong>{' '}
-                      {formatEventDateTime(event)}
+                      <strong>Date:</strong> {formatRecommendedEventDateTime(event)}
                     </p>
                     <button
-                      onClick={() => handleRemoveEvent(event.id)}
+                      onClick={() => handleDeleteEvent(event.id)}
                       className="mt-2 bg-red-500 hover:bg-red-600 px-3 py-1 rounded"
                     >
-                      Remove
+                      Delete
                     </button>
                   </div>
                 ))}
