@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 load_dotenv()
 from server.extensions import db
-from server.model import User
+from server.model import User, UserPreference
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
 
@@ -236,10 +236,20 @@ def rewrapped_register():
     username = data.get('username')
     password = data.get('password')
     role_choice = data.get('role')  #~ 'regular' / 'promoter'
-    store_history = data.get('store_listening_history', False)
-    
+    store_history = data.get('store_listening_history', None)  #~ now must be provided and truthy
+
+    #~ form validation check
+    if not username:
+        return jsonify({'error': 'Username is required'}), 400
+    if not password:
+        return jsonify({'error': 'Password is required'}), 400
+    if not role_choice:
+        return jsonify({'error': 'Role is required'}), 400
+    if store_history is None or store_history is False:
+        return jsonify({'error': 'Consent to store listening history is required'}), 400
+
     #~ pw validation check
-    if not password or len(password) < 8 or not re.search(r'[A-Z]', password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+    if len(password) < 8 or not re.search(r'[A-Z]', password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         return jsonify({'error': 'Password must be at least 8 characters long, contain at least one uppercase letter and one special character'}), 400
 
     if User.query.filter_by(username=username).first():
@@ -331,6 +341,68 @@ def rewrapped_login():
         'username': user.username,
         'role': user.role
     }}), 200
+
+#& Profile: change pw
+@auth_bp.route('/change-password', methods=['POST', 'OPTIONS'])
+def change_password():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200  #~ respond preflight req use HTTP 200
+    data = request.get_json()
+    user_id = data.get('user_id')
+    currentPassword = data.get('currentPassword')
+    newPassword = data.get('newPassword')
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if not user.check_password(currentPassword):
+        return jsonify({'error': 'Current password is incorrect'}), 400
+
+    import re
+    if len(newPassword) < 8 or not re.search(r'[A-Z]', newPassword) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', newPassword):
+        return jsonify({'error': 'Password must be at least 8 characters long, contain at least one uppercase letter and one special character'}), 400
+
+    user.set_password(newPassword)
+    db.session.commit()
+    return jsonify({'message': 'Password changed successfully'}), 200
+
+#& fetch preferences
+@auth_bp.route('/user/preferences', methods=['GET'])
+def get_preferences():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'user_id is required'}), 400
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        return jsonify({'error': 'Invalid user_id'}), 400
+    user_pref = UserPreference.query.filter_by(user_id=user_id).first()
+    if not user_pref or not user_pref.preferences:
+        return jsonify({'preferences': {}}), 200
+    return jsonify({'preferences': user_pref.preferences}), 200
+
+#& create/update preferences
+@auth_bp.route('/user/preferences', methods=['POST', 'OPTIONS'])
+def set_preferences():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200  #~ respond preflight req use HTTP 200
+    data = request.get_json()
+    user_id = data.get('user_id')
+    favoriteArtists = data.get('favoriteArtists')
+    favoriteGenres = data.get('favoriteGenres')
+    favoriteVenues = data.get('favoriteVenues')
+    
+    user_pref = UserPreference.query.filter_by(user_id=user_id).first()
+    if not user_pref:
+        user_pref = UserPreference(user_id=user_id, preferences={})
+        db.session.add(user_pref)
+    user_pref.preferences = {
+        'favoriteArtists': favoriteArtists,
+        'favoriteGenres': favoriteGenres,
+        'favoriteVenues': favoriteVenues
+    }
+    db.session.commit()
+    return jsonify({'message': 'Preferences saved successfully'}), 200
 
 #& clear the session to log out user from OAuth session
 @auth_bp.route('/logout', methods=['POST'])
