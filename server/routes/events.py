@@ -227,7 +227,10 @@ def promoter_events():
                 'target_genre_interest': ev.target_genre_interest,
                 'target_artist_interest': ev.target_artist_interest,
                 'listening_threshold': ev.listening_threshold,
-                'target_roles': ev.target_roles
+                'target_roles': ev.target_roles,
+                'url': ev.url,
+                'image': ev.image,
+                'details': ev.details  
             })
         return jsonify({'events': events_list})
     
