@@ -1,44 +1,52 @@
 import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { useAuth } from '../hooks/useAuth';
 
 const Profile = () => {
   const { user, login } = useAuth();
-
-  //& profile data state frm backend (spotify-synced data)
+  //~ profile data state frm backend (spotify-synced data)
   const [profileData, setProfileData] = useState({
     profile_image_url: '',
     display_name: '',
     email: '',
     country: '',
     followers: '',
-    username: '' //~ re-wrapped username (immutable)
+    username: ''
   });
-
-  //& state to toggle showing/hiding spotify followers
-  const [showFollowers, setShowFollowers] = useState(true);
-
-  //& state for password change form
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-
-  //& state for interest preferences
-  const [preferences, setPreferences] = useState({
+  const [prefs, setPrefs] = useState({
     favoriteArtists: '',
     favoriteGenres: '',
     favoriteVenues: ''
   });
+  const [showFollowers, setShowFollowers] = useState(true);
 
-  //& fetch updated user profile data from backend
+  //& react-hook-form fr pw change
+  const {
+    register: registerPassword,
+    handleSubmit: handlePasswordSubmit,
+    watch: watchPassword,
+    formState: { errors: passwordErrors },
+    reset: resetPassword
+  } = useForm();
+
+  //& react-hook-form fr prefs w/ default values
+  const {
+    register: registerPrefs,
+    handleSubmit: handlePrefsSubmit,
+    reset: resetPrefs
+  } = useForm({ defaultValues: prefs });
+
+  useEffect(() => {
+    resetPrefs(prefs);
+  }, [prefs, resetPrefs]);
+
   useEffect(() => {
     fetch(`${import.meta.env.VITE_BASE_URL}/auth/user`, {
       credentials: 'include'
     })
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.user) {
           login(data.user);
           setProfileData({
@@ -51,88 +59,86 @@ const Profile = () => {
           });
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to fetch profile data:', err);
         toast.error('Failed to load profile data');
       });
   }, []);
 
-  //& handler: followers visibility toggle
+  useEffect(() => {
+    if (user && user.id) {
+      fetch(`${import.meta.env.VITE_BASE_URL}/auth/user/preferences?user_id=${user.id}`, {
+        credentials: 'include'
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.preferences) {
+            setPrefs(data.preferences);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to fetch preferences:', err);
+          toast.error('Failed to fetch preferences');
+        });
+    }
+  }, [user?.id]);
+
   const handleToggleFollowers = () => {
     setShowFollowers(!showFollowers);
   };
 
-  //& pw input change handler
-  const handlePasswordInputChange = (e) => {
-    setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
-  };
-
-  //& pw submission change handler
-  const handleChangePassword = (e) => {
-    e.preventDefault();
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error('New passwords do not match');
-      return;
-    }
-    //& post password change data to backend endpoint
+  const onPasswordSubmit = (data) => {
     fetch(`${import.meta.env.VITE_BASE_URL}/auth/change-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
         user_id: user.id,
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword
       })
     })
-      .then(res => res.json())
-      .then(data => {
-        if (data.message) {
-          toast.success(data.message);
-          setPasswordForm({
-            currentPassword: '',
-            newPassword: '',
-            confirmPassword: ''
-          });
+      .then((res) => res.json())
+      .then((responseData) => {
+        if (responseData.message) {
+          toast.success(responseData.message);
+          resetPassword();
         } else {
-          toast.error(data.error || 'Failed to change password');
+          toast.error(responseData.error || 'Failed to change password');
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Password change error:', err);
         toast.error('Failed to change password');
       });
   };
 
-  //& Interest preference change input handler
-  const handlePreferenceChange = (e) => {
-    setPreferences({ ...preferences, [e.target.name]: e.target.value });
-  };
-
-  //& save interests handler
-  const handleSavePreferences = (e) => {
-    e.preventDefault();
-    //& post preferences to backend endpoint
-    fetch(`${import.meta.env.VITE_BASE_URL}/user/preferences`, {
+  const onPrefsSubmit = (data) => {
+    fetch(`${import.meta.env.VITE_BASE_URL}/auth/user/preferences`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
         user_id: user.id,
-        favoriteArtists: preferences.favoriteArtists,
-        favoriteGenres: preferences.favoriteGenres,
-        favoriteVenues: preferences.favoriteVenues
+        favoriteArtists: data.favoriteArtists,
+        favoriteGenres: data.favoriteGenres,
+        favoriteVenues: data.favoriteVenues
       })
     })
-      .then(res => res.json())
-      .then(data => {
-        if (data.message) {
-          toast.success(data.message);
+      .then((res) => res.json())
+      .then((responseData) => {
+        if (responseData.message) {
+          toast.success(responseData.message);
+          setPrefs({
+            favoriteArtists: data.favoriteArtists,
+            favoriteGenres: data.favoriteGenres,
+            favoriteVenues: data.favoriteVenues
+          });
         } else {
-          toast.error(data.error || 'Failed to save preferences');
+          toast.error(responseData.error || 'Failed to save preferences');
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Preferences save error:', err);
         toast.error('Failed to save preferences');
       });
@@ -160,12 +166,15 @@ const Profile = () => {
                   </span>
                 </div>
               )}
-              <h2 className="text-2xl font-semibold">{profileData.display_name}</h2>
-              <p className="text-lg">Username: {profileData.username}</p>
+            <h2 className="text-2xl font-semibold">{profileData.display_name}</h2>
             </div>
             <div className="mt-4">
-              <p><span className="font-bold">Email:</span> {profileData.email}</p>
-              <p><span className="font-bold">Country:</span> {profileData.country}</p>
+              <p>
+                <span className="font-bold">Email:</span> {profileData.email}
+              </p>
+              <p>
+                <span className="font-bold">Country:</span> {profileData.country}
+              </p>
               <div className="flex items-center mt-2">
                 <p>
                   <span className="font-bold">Spotify Followers:</span>{' '}
@@ -181,43 +190,72 @@ const Profile = () => {
               <p className="mt-2 text-sm text-gray-400">
                 These details are synced from your Spotify profile. To update, please change them on Spotify.
               </p>
+              <div className="mt-4">
+                <p>
+                  <span className='font-bold'>Username:</span> <a className='text-green-300'>{profileData.username}</a>
+                </p>
+                <p className="font-bold ml-9">Interests</p>
+                <p>Favorite Artists:
+                  <a className='text-green-300'> {prefs.favoriteArtists || 'N/A'}</a>
+                </p>
+                <p>Favorite Genres: 
+                  <a className='text-green-300'> {prefs.favoriteGenres || 'N/A'}</a>
+                </p>
+                <p>Favorite Venues: 
+                  <a className='text-green-300'> {prefs.favoriteVenues || 'N/A'}</a>
+                </p>
+              </div>
             </div>
           </div>
           {/* Settings */}
           <div className="w-full md:w-2/3 space-y-8">
-            {/* Change PW */}
+            {/* Change Password */}
             <div className="bg-gray-800 p-4 rounded shadow">
               <h3 className="text-2xl font-semibold mb-4">Change Password</h3>
-              <form onSubmit={handleChangePassword}>
+              <form onSubmit={handlePasswordSubmit(onPasswordSubmit)}>
                 <div className="mb-4">
                   <label className="block mb-1">Current Password</label>
                   <input
                     type="password"
-                    name="currentPassword"
-                    value={passwordForm.currentPassword}
-                    onChange={handlePasswordInputChange}
+                    {...registerPassword('currentPassword', { required: 'Current password is required' })}
                     className="w-full p-2 rounded border border-gray-700 bg-gray-700 text-green-500 focus:border-green-500 focus:outline-none"
                   />
+                  {passwordErrors.currentPassword && (
+                    <p className="text-red-500 text-sm">{passwordErrors.currentPassword.message}</p>
+                  )}
                 </div>
                 <div className="mb-4">
                   <label className="block mb-1">New Password</label>
                   <input
                     type="password"
-                    name="newPassword"
-                    value={passwordForm.newPassword}
-                    onChange={handlePasswordInputChange}
+                    {...registerPassword('newPassword', {
+                      required: 'New password is required',
+                      minLength: { value: 8, message: 'Password must be at least 8 characters' },
+                      pattern: {
+                        value: /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).+$/,
+                        message: "Password must contain at least one uppercase letter and one special character"
+                      }
+                    })}
                     className="w-full p-2 rounded border border-gray-700 bg-gray-700 text-green-500 focus:border-green-500 focus:outline-none"
                   />
+                  {passwordErrors.newPassword && (
+                    <p className="text-red-500 text-sm">{passwordErrors.newPassword.message}</p>
+                  )}
                 </div>
                 <div className="mb-4">
                   <label className="block mb-1">Confirm New Password</label>
                   <input
                     type="password"
-                    name="confirmPassword"
-                    value={passwordForm.confirmPassword}
-                    onChange={handlePasswordInputChange}
+                    {...registerPassword('confirmPassword', {
+                      required: 'Please confirm your new password',
+                      validate: value =>
+                        value === watchPassword('newPassword') || 'Passwords do not match'
+                    })}
                     className="w-full p-2 rounded border border-gray-700 bg-gray-700 text-green-500 focus:border-green-500 focus:outline-none"
                   />
+                  {passwordErrors.confirmPassword && (
+                    <p className="text-red-500 text-sm">{passwordErrors.confirmPassword.message}</p>
+                  )}
                 </div>
                 <button type="submit" className="bg-green-500 hover:bg-green-600 py-2 px-4 rounded">
                   Change Password
@@ -227,14 +265,12 @@ const Profile = () => {
             {/* Interest Preferences */}
             <div className="bg-gray-800 p-4 rounded shadow">
               <h3 className="text-2xl font-semibold mb-4">Interest Preferences</h3>
-              <form onSubmit={handleSavePreferences}>
+              <form onSubmit={handlePrefsSubmit(onPrefsSubmit)}>
                 <div className="mb-4">
                   <label className="block mb-1">Favorite Artists (comma-separated)</label>
                   <input
                     type="text"
-                    name="favoriteArtists"
-                    value={preferences.favoriteArtists}
-                    onChange={handlePreferenceChange}
+                    {...registerPrefs('favoriteArtists')}
                     className="w-full p-2 rounded border border-gray-700 bg-gray-700 text-green-500 focus:border-green-500 focus:outline-none"
                     placeholder="Artist 1, Artist 2"
                   />
@@ -243,9 +279,7 @@ const Profile = () => {
                   <label className="block mb-1">Favorite Genres (comma-separated)</label>
                   <input
                     type="text"
-                    name="favoriteGenres"
-                    value={preferences.favoriteGenres}
-                    onChange={handlePreferenceChange}
+                    {...registerPrefs('favoriteGenres')}
                     className="w-full p-2 rounded border border-gray-700 bg-gray-700 text-green-500 focus:border-green-500 focus:outline-none"
                     placeholder="Genre 1, Genre 2"
                   />
@@ -254,9 +288,7 @@ const Profile = () => {
                   <label className="block mb-1">Favorite Event Venues (comma-separated)</label>
                   <input
                     type="text"
-                    name="favoriteVenues"
-                    value={preferences.favoriteVenues}
-                    onChange={handlePreferenceChange}
+                    {...registerPrefs('favoriteVenues')}
                     className="w-full p-2 rounded border border-gray-700 bg-gray-700 text-green-500 focus:border-green-500 focus:outline-none"
                     placeholder="Venue 1, Venue 2"
                   />
