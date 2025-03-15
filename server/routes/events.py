@@ -132,14 +132,16 @@ def all_events():
             'event_date': ev.event_date.isoformat() if ev.event_date else None,
             'status': ev.status,
             'promoter_info': ev.promoter_info,
+            'details': ev.details,
             'is_sponsored': ev.is_sponsored,
             'target_country': ev.target_country,
             'target_genre_interest': ev.target_genre_interest,
             'target_artist_interest': ev.target_artist_interest,
             'listening_threshold': ev.listening_threshold,
-            'target_roles': ev.target_roles
+            'target_roles': ev.target_roles,
+            'url': ev.url,
+            'image': ev.image
         })
-    
     return jsonify({
         'recommended_events': recommended_events,
         'external_events': external_events,
@@ -147,6 +149,7 @@ def all_events():
     })
 
 #& remove user saved event
+@events_bp.route('/delete/<int:event_id>', methods=['DELETE'])
 def delete_event(event_id):
     #~ delete saved_event record(s) for this event
     saved = SavedEvent.query.filter_by(event_id=event_id).all()
@@ -167,6 +170,7 @@ def delete_event(event_id):
             return jsonify({'message': 'Event unsaved and removed successfully', 'event_id': event_id}), 200
 
     return jsonify({'message': 'Event unsaved successfully', 'event_id': event_id}), 200
+
 #& fetch user saved events
 @events_bp.route('/saved', methods=['GET'])
 def get_saved_events():
@@ -251,6 +255,7 @@ def promoter_events():
             location=data.get('location'),
             event_date=event_date,
             promoter_info='',  #~ to set below
+            details=data.get('details') or data.get('description'),
             tags=data.get('tags', []),
             promoter_id=user_id,  #~ set promoter_id instead of user_id
             url=data.get('url', ''),
@@ -276,12 +281,15 @@ def promoter_events():
             'event_date': new_event.event_date.isoformat() if new_event.event_date else None,
             'status': new_event.status,
             'promoter_info': new_event.promoter_info,
+            'details': new_event.details,
             'is_sponsored': new_event.is_sponsored,
             'target_country': new_event.target_country,
             'target_genre_interest': new_event.target_genre_interest,
             'target_artist_interest': new_event.target_artist_interest,
             'listening_threshold': new_event.listening_threshold,
-            'target_roles': new_event.target_roles
+            'target_roles': new_event.target_roles,
+            'url': new_event.url,
+            'image': new_event.image
         }}), 201
 
 #& update promoter event details
@@ -304,10 +312,12 @@ def update_promoter_event(event_id):
         except Exception:
             pass
     event.description = data.get('description', getattr(event, 'description', ''))
+    event.details = data.get('details', getattr(event, 'details', ''))
     event.status = data.get('status', event.status)
     #~ make sure event remains sponsored when updated by promoter
     event.is_sponsored = True
     event.promoter_info = data.get('promoter_info', event.promoter_info)
+    event.url = data.get('url', event.url)
     #~ update targeting fields if provided
     event.target_country = data.get('targetCountry', event.target_country)
     event.target_genre_interest = data.get('targetGenreInterest', event.target_genre_interest)
@@ -326,6 +336,7 @@ def update_promoter_event(event_id):
         'event_date': event.event_date.isoformat() if event.event_date else None,
         'status': event.status,
         'promoter_info': event.promoter_info,
+        'details': event.details,
         'is_sponsored': event.is_sponsored,
         'target_country': event.target_country,
         'target_genre_interest': event.target_genre_interest,
