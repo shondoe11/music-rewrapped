@@ -192,8 +192,7 @@ const FavoriteGenresEvolution = ({ userId }) => {
   }, [data, topGenres]);
 
   return (
-    <div>
-      <h2 className="text-4xl font-bold mb-4">Favorite Genres Evolution</h2>
+    <div className='mt-4'>
       <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <svg ref={svgRef} viewBox="0 0 900 400" preserveAspectRatio="xMidYMid meet"></svg>
       </div>
