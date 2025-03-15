@@ -1,34 +1,373 @@
 import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { useAuth } from '../hooks/useAuth';
 import axios from 'axios';
 
+const NewEventForm = ({ onEventAdded }) => {
+  const { user } = useAuth();
+  const { register, handleSubmit, formState: { errors }, reset } = useForm();
+
+  const onSubmit = (data) => {
+    if (!user || !user.id) {
+      toast.error("User not authenticated");
+      return;
+    }
+    const payload = { ...data, user_id: user.id };
+    axios.post(`${import.meta.env.VITE_BASE_URL}/events/promoter`, payload, { withCredentials: true })
+      .then((res) => {
+        if (res.data.message) {
+          toast.success(res.data.message);
+          onEventAdded(res.data.event);
+          reset();
+        } else {
+          toast.error(res.data.error || 'Event submission failed');
+        }
+      })
+      .catch((err) => {
+        console.error('Event submission error:', err);
+        toast.error('Event submission failed');
+      });
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label className="block mb-1">Title</label>
+        <input
+          type="text"
+          {...register("title", { required: "Title is required" })}
+          className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+        />
+        {errors.title && <p className="text-red-500 text-sm">{errors.title.message}</p>}
+      </div>
+      <div>
+        <label className="block mb-1">Event Image URL</label>
+        <input
+          type="text"
+          {...register("image", {  
+            pattern: { 
+              value: /^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|svg))$/i,
+              message: "Enter a valid image URL"
+            }
+          })}
+          className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+          placeholder="Valid image URL"
+        />
+        {errors.image && <p className="text-red-500 text-sm">{errors.image.message}</p>}
+      </div>
+      <div>
+        <label className="block mb-1">Event URL</label>
+        <input
+          type="text"
+          {...register("url", { 
+            pattern: { 
+              value: /^(https?:\/\/[^\s]+)$/i,
+              message: "Enter a valid event URL"
+            }
+          })}
+          className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+          placeholder="Valid event URL"
+        />
+        {errors.url && <p className="text-red-500 text-sm">{errors.url.message}</p>}
+      </div>
+      <div>
+        <label className="block mb-1">Location</label>
+        <input
+          type="text"
+          {...register("location", { required: "Location is required" })}
+          className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+        />
+        {errors.location && <p className="text-red-500 text-sm">{errors.location.message}</p>}
+      </div>
+      <div className="flex gap-4">
+        <div className="w-1/2">
+          <label className="block mb-1">Date</label>
+          <input
+            type="date"
+            {...register("date", { required: "Date is required" })}
+            className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+          />
+          {errors.date && <p className="text-red-500 text-sm">{errors.date.message}</p>}
+        </div>
+        <div className="w-1/2">
+          <label className="block mb-1">Time</label>
+          <input
+            type="time"
+            {...register("time", { required: "Time is required" })}
+            className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+          />
+          {errors.time && <p className="text-red-500 text-sm">{errors.time.message}</p>}
+        </div>
+      </div>
+      <div>
+        <label className="block mb-1">Description</label>
+        <textarea
+          {...register("description")}
+          className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+          placeholder="Event description"
+        ></textarea>
+      </div>
+      {/* Additional Targeting Fields */}
+      <div>
+        <label className="block mb-1">Target Country</label>
+        <input
+          type="text"
+          {...register("targetCountry")}
+          placeholder="e.g., us"
+          className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+        />
+      </div>
+      <div>
+        <label className="block mb-1">Target Genre Interest (comma-separated)</label>
+        <input
+          type="text"
+          {...register("targetGenreInterest")}
+          placeholder="e.g., rock, pop"
+          className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+        />
+      </div>
+      <div>
+        <label className="block mb-1">Target Artist Interest (comma-separated)</label>
+        <input
+          type="text"
+          {...register("targetArtistInterest")}
+          placeholder="e.g., the beatles, taylor swift"
+          className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+        />
+      </div>
+      <div>
+        <label className="block mb-1">Listening Threshold</label>
+        <input
+          type="number"
+          {...register("listeningThreshold")}
+          placeholder="Number of listens required (e.g., 10)"
+          className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+        />
+        <p className="text-xs text-gray-500">
+          This threshold indicates the minimum number of times a user must have listened to be considered.
+        </p>
+      </div>
+      <div>
+        <label className="block mb-1">Target Role</label>
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            {...register("targetRoles")}
+            value="guest"
+            className="mr-2"
+          />
+          <span className="mr-4">Guest</span>
+          <input
+            type="checkbox"
+            {...register("targetRoles")}
+            value="regular"
+            className="mr-2"
+          />
+          <span>Regular</span>
+        </div>
+        <p className="text-xs text-gray-500">
+          Select target roles to specify which users to target.
+        </p>
+      </div>
+      <button type="submit" className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">
+        Submit Event
+      </button>
+    </form>
+  );
+};
+
+const UpdateEventForm = ({ event, onUpdated }) => {
+  const { register, handleSubmit, formState: { errors }, reset } = useForm({
+    defaultValues: {
+      title: event.title,
+      location: event.location,
+      date: event.event_date ? event.event_date.split('T')[0] : '',
+      time: event.event_date ? event.event_date.split('T')[1].slice(0,5) : '',
+      description: event.description || event.details || '',
+      image: event.image || '',
+      url: event.url || '',
+      targetCountry: event.target_country || '',
+      targetGenreInterest: event.target_genre_interest || '',
+      targetArtistInterest: event.target_artist_interest || '',
+      listeningThreshold: event.listening_threshold || '',
+      targetRoles: event.target_roles || []
+    }
+  });
+
+  useEffect(() => {
+    reset({
+      title: event.title,
+      location: event.location,
+      date: event.event_date ? event.event_date.split('T')[0] : '',
+      time: event.event_date ? event.event_date.split('T')[1].slice(0,5) : '',
+      description: event.description || event.details || '',
+      image: event.image || '',
+      url: event.url || '',
+      targetCountry: event.target_country || '',
+      targetGenreInterest: event.target_genre_interest || '',
+      targetArtistInterest: event.target_artist_interest || '',
+      listeningThreshold: event.listening_threshold || '',
+      targetRoles: event.target_roles || []
+    });
+  }, [event, reset]);
+
+  const onSubmit = (data) => {
+    axios.put(`${import.meta.env.VITE_BASE_URL}/events/promoter/${event.id}`, { ...data, user_id: event.promoter_id }, { withCredentials: true })
+      .then((res) => {
+        if (res.data.message) {
+          toast.success(res.data.message);
+          onUpdated(res.data.event);
+        } else {
+          toast.error(res.data.error || 'Update failed');
+        }
+      })
+      .catch((err) => {
+        console.error('Update error:', err);
+        toast.error('Update failed');
+      });
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
+      <input
+        type="text"
+        {...register("title", { required: "Title is required" })}
+        placeholder="Title"
+        className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+      />
+      {errors.title && <p className="text-red-500 text-sm">{errors.title.message}</p>}
+      <input
+        type="text"
+        {...register("location", { required: "Location is required" })}
+        placeholder="Location"
+        className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+      />
+      {errors.location && <p className="text-red-500 text-sm">{errors.location.message}</p>}
+      <div className="flex gap-2">
+        <input
+          type="date"
+          {...register("date", { required: "Date is required" })}
+          className="w-1/2 p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+        />
+        {errors.date && <p className="text-red-500 text-sm">{errors.date.message}</p>}
+        <input
+          type="time"
+          {...register("time", { required: "Time is required" })}
+          className="w-1/2 p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+        />
+        {errors.time && <p className="text-red-500 text-sm">{errors.time.message}</p>}
+      </div>
+      <input
+        type="text"
+        {...register("image", {
+          pattern: {
+            value: /^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|svg))$/i,
+            message: "Enter a valid image URL"
+          }
+        })}
+        placeholder="Event Image URL"
+        className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+      />
+      {errors.image && <p className="text-red-500 text-sm">{errors.image.message}</p>}
+      <input
+        type="text"
+        {...register("url", {
+          pattern: {
+            value: /^(https?:\/\/[^\s]+)$/i,
+            message: "Enter a valid event URL"
+          }
+        })}
+        placeholder="Event URL"
+        className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+      />
+      {errors.url && <p className="text-red-500 text-sm">{errors.url.message}</p>}
+      <textarea
+        {...register("description")}
+        placeholder="Description"
+        className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+      ></textarea>
+      {/* Additional targeting fields */}
+      <input
+        type="text"
+        {...register("targetCountry")}
+        placeholder="Target Country (e.g., us)"
+        className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+      />
+      <input
+        type="text"
+        {...register("targetGenreInterest")}
+        placeholder="Target Genre Interest (comma-separated)"
+        className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+      />
+      <input
+        type="text"
+        {...register("targetArtistInterest")}
+        placeholder="Target Artist Interest (comma-separated)"
+        className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+      />
+      <div>
+        <input
+          type="number"
+          {...register("listeningThreshold")}
+          placeholder="Listening Threshold (e.g., 10)"
+          className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
+        />
+        <p className="text-xs text-gray-500">
+          This threshold indicates the minimum number of times a user must have listened to be considered.
+        </p>
+      </div>
+      <div>
+        <label className="block mb-1">Target Role</label>
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            {...register("targetRoles")}
+            value="guest"
+            className="mr-2"
+          />
+          <span className="mr-4">Guest</span>
+          <input
+            type="checkbox"
+            {...register("targetRoles")}
+            value="regular"
+            className="mr-2"
+          />
+          <span>Regular</span>
+        </div>
+        <p className="text-xs text-gray-500">
+          Select target roles to specify which users to target.
+        </p>
+      </div>
+      <button type="submit" className="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded">
+        Save Changes
+      </button>
+    </form>
+  );
+};
+
 const PromoterPanel = () => {
   const { user } = useAuth();
-
-  //& tabs: dashboard, submit, sponsored, analytics
   const [selectedTab, setSelectedTab] = useState('dashboard');
   const [promoterEvents, setPromoterEvents] = useState([]);
   const [sponsoredEvents, setSponsoredEvents] = useState([]);
   const [editingEventId, setEditingEventId] = useState(null);
-  const [editForm, setEditForm] = useState({});
-  const [eventForm, setEventForm] = useState({
-    title: '',
-    location: '',
-    date: '',
-    time: '',
-    description: '',
-    image: '',
-    url: '',
-    targetCountry: '',
-    targetGenreInterest: '',
-    targetArtistInterest: '',
-    listeningThreshold: '',
-    targetRoles: []
-  });
-  const [formErrors, setFormErrors] = useState({});
 
-  //& effect: fetch promoter events when component mounts
+  const handleTabChange = (tab) => {
+    setSelectedTab(tab);
+    setEditingEventId(null);
+  };
+
+  const updateEventInState = (updatedEvent) => {
+    setSponsoredEvents(prev =>
+      prev.map(ev => (ev.id === updatedEvent.id ? updatedEvent : ev))
+    );
+  };
+
+  const deleteEventFromState = (eventId) => {
+    setSponsoredEvents(prev => prev.filter(ev => ev.id !== eventId));
+  };
+
   useEffect(() => {
     if (user && user.role === 'promoter') {
       axios.get(`${import.meta.env.VITE_BASE_URL}/events/promoter?user_id=${user.id}`, { withCredentials: true })
@@ -39,123 +378,11 @@ const PromoterPanel = () => {
           }
         })
         .catch(err => {
-          console.error('failed to fetch promoter events:', err);
-          toast.error('failed to load your events');
+          console.error('Failed to fetch promoter events:', err);
+          toast.error('Failed to load your events');
         });
     }
   }, [user]);
-
-  const handleTabChange = (tab) => {
-    setSelectedTab(tab);
-    setEditingEventId(null);
-  };
-
-  const handleEventInputChange = (e) => {
-    setEventForm({ ...eventForm, [e.target.name]: e.target.value });
-  };
-
-  //& target role
-  const handleTargetRoleChange = (role) => {
-    const currentRoles = eventForm.targetRoles;
-    if (currentRoles.includes(role)) {
-      setEventForm({ ...eventForm, targetRoles: currentRoles.filter(r => r !== role) });
-    } else {
-      setEventForm({ ...eventForm, targetRoles: [...currentRoles, role] });
-    }
-  };
-
-  const validateEventForm = () => {
-    const errors = {};
-    if (!eventForm.title) errors.title = 'Title is required';
-    if (!eventForm.location) errors.location = 'Location is required';
-    if (!eventForm.date) errors.date = 'Date is required';
-    if (!eventForm.time) errors.time = 'Time is required';
-    return errors;
-  };
-
-  const handleSubmitEvent = (e) => {
-    e.preventDefault();
-    //~ make sure user is loaded before using user.id
-    if (!user) {
-      toast.error('user not loaded. please log in.');
-      return;
-    }
-    const errors = validateEventForm();
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      toast.error('please fix form errors');
-      return;
-    }
-    setFormErrors({});
-    axios.post(`${import.meta.env.VITE_BASE_URL}/events/promoter`, { ...eventForm, user_id: user.id }, { withCredentials: true })
-      .then(res => {
-        if (res.data.message) {
-          toast.success(res.data.message);
-          setPromoterEvents(prev => [...prev, res.data.event]);
-          setSponsoredEvents(prev => [...prev, res.data.event]);
-          setEventForm({
-            title: '',
-            location: '',
-            date: '',
-            time: '',
-            description: '',
-            image: '',
-            url: '',
-            targetCountry: '',
-            targetGenreInterest: '',
-            targetArtistInterest: '',
-            listeningThreshold: '',
-            targetRoles: []
-          });
-        } else {
-          toast.error(res.data.error || 'event submission failed');
-        }
-      })
-      .catch(err => {
-        console.error('event submission error:', err);
-        toast.error('event submission failed');
-      });
-  };
-
-  const handleEditChange = (e) => {
-    setEditForm({ ...editForm, [e.target.name]: e.target.value });
-  };
-
-  const handleUpdateEvent = (eventId) => {
-    axios.put(`${import.meta.env.VITE_BASE_URL}/events/promoter/${eventId}`, { ...editForm, user_id: user.id }, { withCredentials: true })
-      .then(res => {
-        if (res.data.message) {
-          toast.success(res.data.message);
-          setSponsoredEvents(prev => prev.map(ev => ev.id === eventId ? res.data.event : ev));
-          setEditingEventId(null);
-        } else {
-          toast.error(res.data.error || 'update failed');
-        }
-      })
-      .catch(err => {
-        console.error('update error:', err);
-        toast.error('update failed');
-      });
-  };
-
-  const handleDeleteEvent = (eventId) => {
-    if (window.confirm('are you sure you want to delete this event?')) {
-      axios.delete(`${import.meta.env.VITE_BASE_URL}/events/promoter/${eventId}`, { withCredentials: true })
-        .then(res => {
-          if (res.data.message) {
-            toast.success(res.data.message);
-            setSponsoredEvents(prev => prev.filter(ev => ev.id !== eventId));
-            setPromoterEvents(prev => prev.filter(ev => ev.id !== eventId));
-          } else {
-            toast.error(res.data.error || 'deletion failed');
-          }
-        })
-        .catch(err => {
-          console.error('delete error:', err);
-          toast.error('deletion failed');
-        });
-    }
-  };
 
   const renderContent = () => {
     switch (selectedTab) {
@@ -185,7 +412,7 @@ const PromoterPanel = () => {
                       <td className="py-2 px-4 border-b">{event.title}</td>
                       <td className="py-2 px-4 border-b">{event.location}</td>
                       <td className="py-2 px-4 border-b">
-                        {new Date(event.event_date).toLocaleDateString()} {new Date(event.event_date).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                        {new Date(event.event_date).toLocaleDateString()} {new Date(event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </td>
                       <td className="py-2 px-4 border-b">{event.status || 'Pre-Event'}</td>
                       <td className="py-2 px-4 border-b">{event.views || 0}</td>
@@ -203,161 +430,11 @@ const PromoterPanel = () => {
         return (
           <div className="p-4">
             <h2 className="text-3xl font-semibold mb-4">New Event</h2>
-            <form onSubmit={handleSubmitEvent} className="space-y-4">
-              <div>
-                <label className="block mb-1">Title</label>
-                <input
-                  type="text"
-                  name="title"
-                  value={eventForm.title}
-                  onChange={handleEventInputChange}
-                  className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
-                />
-                {formErrors.title && <p className="text-red-500 text-sm">{formErrors.title}</p>}
-              </div>
-              <div>
-                <label className="block mb-1">Event Image URL</label>
-                <input
-                  type="text"
-                  name="image"
-                  value={eventForm.image}
-                  onChange={handleEventInputChange}
-                  className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
-                  placeholder="valid image url"
-                />
-              </div>
-              <div>
-                <label className="block mb-1">Event URL</label>
-                <input
-                  type="text"
-                  name="url"
-                  value={eventForm.url}
-                  onChange={handleEventInputChange}
-                  className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
-                  placeholder="valid event url"
-                />
-              </div>
-              <div>
-                <label className="block mb-1">Location</label>
-                <input
-                  type="text"
-                  name="location"
-                  value={eventForm.location}
-                  onChange={handleEventInputChange}
-                  className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
-                />
-                {formErrors.location && <p className="text-red-500 text-sm">{formErrors.location}</p>}
-              </div>
-              <div className="flex gap-4">
-                <div className="w-1/2">
-                  <label className="block mb-1">Date</label>
-                  <input
-                    type="date"
-                    name="date"
-                    value={eventForm.date}
-                    onChange={handleEventInputChange}
-                    className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
-                  />
-                  {formErrors.date && <p className="text-red-500 text-sm">{formErrors.date}</p>}
-                </div>
-                <div className="w-1/2">
-                  <label className="block mb-1">Time</label>
-                  <input
-                    type="time"
-                    name="time"
-                    value={eventForm.time}
-                    onChange={handleEventInputChange}
-                    className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
-                  />
-                  {formErrors.time && <p className="text-red-500 text-sm">{formErrors.time}</p>}
-                </div>
-              </div>
-              <div>
-                <label className="block mb-1">Description</label>
-                <textarea
-                  name="description"
-                  value={eventForm.description}
-                  onChange={handleEventInputChange}
-                  className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
-                ></textarea>
-              </div>
-              <div>
-                <label className="block mb-1">Target Country</label>
-                <input
-                  type="text"
-                  name="targetCountry"
-                  value={eventForm.targetCountry}
-                  onChange={handleEventInputChange}
-                  className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
-                  placeholder="e.g., us"
-                />
-              </div>
-              <div>
-                <label className="block mb-1">Target Genre Interest (comma-separated)</label>
-                <input
-                  type="text"
-                  name="targetGenreInterest"
-                  value={eventForm.targetGenreInterest}
-                  onChange={handleEventInputChange}
-                  className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
-                  placeholder="e.g., rock, pop"
-                />
-              </div>
-              <div>
-                <label className="block mb-1">Target Artist Interest (comma-separated)</label>
-                <input
-                  type="text"
-                  name="targetArtistInterest"
-                  value={eventForm.targetArtistInterest}
-                  onChange={handleEventInputChange}
-                  className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
-                  placeholder="e.g., the beatles, taylor swift"
-                />
-              </div>
-              <div>
-                <label className="block mb-1">Listening Threshold</label>
-                <input
-                  type="number"
-                  name="listeningThreshold"
-                  value={eventForm.listeningThreshold}
-                  onChange={handleEventInputChange}
-                  className="w-full p-2 rounded border bg-gray-800 text-green-500 focus:border-green-500 focus:outline-none"
-                  placeholder="number of listens required (e.g., 10)"
-                />
-                <p className="text-xs text-gray-500">
-                  This threshold indicates the minimum number of times a user must have listened to be considered.
-                </p>
-              </div>
-              <div>
-                <label className="block mb-1">Target Role</label>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="targetRoles"
-                    value="guest"
-                    checked={eventForm.targetRoles.includes('guest')}
-                    onChange={() => handleTargetRoleChange('guest')}
-                    className="mr-2"
-                  />
-                  <span className="mr-4">Guest</span>
-                  <input
-                    type="checkbox"
-                    name="targetRoles"
-                    value="regular"
-                    checked={eventForm.targetRoles.includes('regular')}
-                    onChange={() => handleTargetRoleChange('regular')}
-                    className="mr-2"
-                  />
-                  <span>Regular</span>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Select target roles to specify which users to target.
-                </p>
-              </div>
-              <button type="submit" className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">
-                Submit Event
-              </button>
-            </form>
+            <NewEventForm onEventAdded={(newEv) => {
+              setPromoterEvents(prev => [...prev, newEv]);
+              setSponsoredEvents(prev => [...prev, newEv]);
+              setSelectedTab('sponsored');
+            }} />
           </div>
         );
       case 'sponsored':
@@ -368,13 +445,13 @@ const PromoterPanel = () => {
               <p>No sponsored events available.</p>
             ) : (
               <ul className="space-y-4">
-                {sponsoredEvents.map((event, idx) => (
-                  <li key={idx} className="p-4 bg-gray-800 rounded shadow">
+                {sponsoredEvents.map((event) => (
+                  <li key={event.id} className="p-4 bg-gray-800 rounded shadow">
                     <div className="flex justify-between items-center">
                       <div>
                         <h4 className="text-xl font-semibold">{event.title}</h4>
                         <p>
-                          {event.location} | {new Date(event.event_date).toLocaleDateString()} {new Date(event.event_date).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                          {event.location} | {new Date(event.event_date).toLocaleDateString()} {new Date(event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                         {event.details && (
                           <p className="mt-1">{event.details}</p>
@@ -382,29 +459,29 @@ const PromoterPanel = () => {
                       </div>
                       <div className="flex space-x-2">
                         <button 
-                          onClick={() => {
-                            setEditingEventId(event.id);
-                            setEditForm({
-                              title: event.title,
-                              location: event.location,
-                              date: event.event_date ? event.event_date.split('T')[0] : '',
-                              time: event.event_date ? event.event_date.split('T')[1].slice(0,5) : '',
-                              details: event.details || '',
-                              image: event.image || '',
-                              url: event.url || '',
-                              targetCountry: event.target_country || '',
-                              targetGenreInterest: event.target_genre_interest || '',
-                              targetArtistInterest: event.target_artist_interest || '',
-                              listeningThreshold: event.listening_threshold || '',
-                              targetRoles: event.target_roles || []
-                            });
-                          }}
+                          onClick={() => setEditingEventId(event.id)}
                           className="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded"
                         >
                           Update
                         </button>
                         <button 
-                          onClick={() => handleDeleteEvent(event.id)}
+                          onClick={() => {
+                            if (window.confirm('Are you sure you want to delete this event?')) {
+                              axios.delete(`${import.meta.env.VITE_BASE_URL}/events/promoter/${event.id}`, { withCredentials: true })
+                                .then(res => {
+                                  if (res.data.message) {
+                                    toast.success(res.data.message);
+                                    deleteEventFromState(event.id);
+                                  } else {
+                                    toast.error(res.data.error || 'Deletion failed');
+                                  }
+                                })
+                                .catch(err => {
+                                  console.error('Delete error:', err);
+                                  toast.error('Deletion failed');
+                                });
+                            }
+                          }}
                           className="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded"
                         >
                           Delete
@@ -414,101 +491,10 @@ const PromoterPanel = () => {
                     {editingEventId === event.id && (
                       <div className="mt-4 p-4 bg-gray-700 rounded">
                         <h3 className="text-lg font-semibold mb-2">Edit Event Details</h3>
-                        <div className="space-y-2">
-                          <input 
-                            type="text"
-                            name="title"
-                            value={editForm.title}
-                            onChange={handleEditChange}
-                            className="w-full p-2 rounded border bg-gray-800 text-green-500"
-                            placeholder="Title"
-                          />
-                          <input 
-                            type="text"
-                            name="location"
-                            value={editForm.location}
-                            onChange={handleEditChange}
-                            className="w-full p-2 rounded border bg-gray-800 text-green-500"
-                            placeholder="Location"
-                          />
-                          <div className="flex gap-2">
-                            <input 
-                              type="date"
-                              name="date"
-                              value={editForm.date}
-                              onChange={handleEditChange}
-                              className="w-1/2 p-2 rounded border bg-gray-800 text-green-500"
-                            />
-                            <input 
-                              type="time"
-                              name="time"
-                              value={editForm.time}
-                              onChange={handleEditChange}
-                              className="w-1/2 p-2 rounded border bg-gray-800 text-green-500"
-                            />
-                          </div>
-                          <textarea 
-                            name="details"
-                            value={editForm.details}
-                            onChange={handleEditChange}
-                            className="w-full p-2 rounded border bg-gray-800 text-green-500"
-                            placeholder="Details"
-                          ></textarea>
-                          <input 
-                            type="text"
-                            name="image"
-                            value={editForm.image}
-                            onChange={handleEditChange}
-                            className="w-full p-2 rounded border bg-gray-800 text-green-500"
-                            placeholder="Event Image URL"
-                          />
-                          <input 
-                            type="text"
-                            name="url"
-                            value={editForm.url}
-                            onChange={handleEditChange}
-                            className="w-full p-2 rounded border bg-gray-800 text-green-500"
-                            placeholder="Event URL"
-                          />
-                          <input 
-                            type="text"
-                            name="targetCountry"
-                            value={editForm.targetCountry}
-                            onChange={handleEditChange}
-                            className="w-full p-2 rounded border bg-gray-800 text-green-500"
-                            placeholder="Target Country"
-                          />
-                          <input 
-                            type="text"
-                            name="targetGenreInterest"
-                            value={editForm.targetGenreInterest}
-                            onChange={handleEditChange}
-                            className="w-full p-2 rounded border bg-gray-800 text-green-500"
-                            placeholder="Target Genre Interest (comma-separated)"
-                          />
-                          <input 
-                            type="text"
-                            name="targetArtistInterest"
-                            value={editForm.targetArtistInterest}
-                            onChange={handleEditChange}
-                            className="w-full p-2 rounded border bg-gray-800 text-green-500"
-                            placeholder="Target Artist Interest (comma-separated)"
-                          />
-                          <input 
-                            type="number"
-                            name="listeningThreshold"
-                            value={editForm.listeningThreshold}
-                            onChange={handleEditChange}
-                            className="w-full p-2 rounded border bg-gray-800 text-green-500"
-                            placeholder="Listening Threshold"
-                          />
-                        </div>
-                        <button 
-                          onClick={() => handleUpdateEvent(event.id)}
-                          className="mt-2 bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded"
-                        >
-                          Save Changes
-                        </button>
+                        <UpdateEventForm event={event} onUpdated={(updatedEv) => {
+                          updateEventInState(updatedEv);
+                          setEditingEventId(null);
+                        }} />
                       </div>
                     )}
                   </li>
