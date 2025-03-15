@@ -3,7 +3,7 @@ import TopTracksChart from './TopTracksChart';
 import TopAlbumsChart from './TopAlbumsChart';
 import FavoriteGenresEvolution from './FavoriteGenresEvolution';
 import TopArtistsChart from './TopArtistsChart';
-import { getSpotifyTopTracks, getSpotifyTopAlbums, getSpotifyTopArtists } from '../api';
+import { getSpotifyTopTracks } from '../api';
 import { toast } from 'react-toastify';
 
 const Dashboard = ({ data, userId }) => {
@@ -171,6 +171,10 @@ const Dashboard = ({ data, userId }) => {
 
       {/* Favorite Genres Evolution */}
       <section className="mb-8">
+        <div className="group relative inline-block">
+          <h2 className="text-4xl font-semibold">Favorite Genres Evolution</h2>
+          <span className="absolute left-0 -bottom-1 block h-0.5 bg-green-500 w-0 group-hover:w-full transition-all duration-300"></span>
+        </div>
         <FavoriteGenresEvolution userId={userId} />
       </section>
     </div>
