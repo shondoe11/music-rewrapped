@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { useAuth } from '../hooks/useAuth';
+import { getCurrentUser, getUserPreferences, updateUserPreferences, changePassword } from '../api';
 
 const Profile = () => {
   const { user, login } = useAuth();
@@ -42,106 +43,86 @@ const Profile = () => {
   }, [prefs, resetPrefs]);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_BASE_URL}/auth/user`, {
-      credentials: 'include'
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) {
-          login(data.user);
+    async function fetchUserData() {
+      try {
+        const response = await getCurrentUser();
+        if (response.user) {
+          login(response.user);
           setProfileData({
-            profile_image_url: data.user.profile_image_url || '',
-            display_name: data.user.display_name || 'N/A',
-            email: data.user.email || 'N/A',
-            country: data.user.country || 'N/A',
-            followers: data.user.followers || 'N/A',
-            username: data.user.username || 'N/A'
+            profile_image_url: response.user.profile_image_url || '',
+            display_name: response.user.display_name || 'N/A',
+            email: response.user.email || 'N/A',
+            country: response.user.country || 'N/A',
+            followers: response.user.followers || 'N/A',
+            username: response.user.username || 'N/A'
           });
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error('Failed to fetch profile data:', err);
         toast.error('Failed to load profile data');
-      });
-  }, []);
+      }
+    }
+    fetchUserData();
+  }, [login]);
 
   useEffect(() => {
-    if (user && user.id) {
-      fetch(`${import.meta.env.VITE_BASE_URL}/auth/user/preferences?user_id=${user.id}`, {
-        credentials: 'include'
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.preferences) {
-            setPrefs(data.preferences);
+    async function fetchPreferences() {
+      if (user && user.id) {
+        try {
+          const response = await getUserPreferences(user.id);
+          if (response.preferences) {
+            setPrefs(response.preferences);
           }
-        })
-        .catch((err) => {
+        } catch (err) {
           console.error('Failed to fetch preferences:', err);
           toast.error('Failed to fetch preferences');
-        });
+        }
+      }
     }
+    fetchPreferences();
   }, [user?.id]);
 
   const handleToggleFollowers = () => {
     setShowFollowers(!showFollowers);
   };
 
-  const onPasswordSubmit = (data) => {
-    fetch(`${import.meta.env.VITE_BASE_URL}/auth/change-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        user_id: user.id,
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword
-      })
-    })
-      .then((res) => res.json())
-      .then((responseData) => {
-        if (responseData.message) {
-          toast.success(responseData.message);
-          resetPassword();
-        } else {
-          toast.error(responseData.error || 'Failed to change password');
-        }
-      })
-      .catch((err) => {
-        console.error('Password change error:', err);
-        toast.error('Failed to change password');
-      });
+  const onPasswordSubmit = async (data) => {
+    try {
+      const response = await changePassword(user.id, data.currentPassword, data.newPassword);
+      if (response.message) {
+        toast.success(response.message);
+        resetPassword();
+      } else {
+        toast.error(response.error || 'Failed to change password');
+      }
+    } catch (err) {
+      console.error('Password change error:', err);
+      toast.error('Failed to change password');
+    }
   };
 
-  const onPrefsSubmit = (data) => {
-    fetch(`${import.meta.env.VITE_BASE_URL}/auth/user/preferences`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        user_id: user.id,
+  const onPrefsSubmit = async (data) => {
+    try {
+      const response = await updateUserPreferences(user.id, {
         favoriteArtists: data.favoriteArtists,
         favoriteGenres: data.favoriteGenres,
         favoriteVenues: data.favoriteVenues
-      })
-    })
-      .then((res) => res.json())
-      .then((responseData) => {
-        if (responseData.message) {
-          toast.success(responseData.message);
-          setPrefs({
-            favoriteArtists: data.favoriteArtists,
-            favoriteGenres: data.favoriteGenres,
-            favoriteVenues: data.favoriteVenues
-          });
-        } else {
-          toast.error(responseData.error || 'Failed to save preferences');
-        }
-      })
-      .catch((err) => {
-        console.error('Preferences save error:', err);
-        toast.error('Failed to save preferences');
       });
+      
+      if (response.message) {
+        toast.success(response.message);
+        setPrefs({
+          favoriteArtists: data.favoriteArtists,
+          favoriteGenres: data.favoriteGenres,
+          favoriteVenues: data.favoriteVenues
+        });
+      } else {
+        toast.error(response.error || 'Failed to save preferences');
+      }
+    } catch (err) {
+      console.error('Preferences save error:', err);
+      toast.error('Failed to save preferences');
+    }
   };
 
   return (

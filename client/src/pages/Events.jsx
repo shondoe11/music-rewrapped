@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useAuth } from '../hooks/useAuth';
+import { getAllEvents, getSavedEvents, saveEvent, deleteEvent } from '../api';
 
 const Events = () => {
   const { user } = useAuth();
@@ -77,17 +77,16 @@ const Events = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const url = `${import.meta.env.VITE_BASE_URL}/events/all?countryCode=${country}`;
-        const response = await axios.get(url, { withCredentials: true });
-        if (response.data) {
-          if (response.data.external_events && response.data.external_events.length > 0) {
-            setEvents(response.data.external_events);
+        const response = await getAllEvents(country);
+        if (response) {
+          if (response.external_events && response.external_events.length > 0) {
+            setEvents(response.external_events);
           } else {
             toast.info('No external events found from external sources');
             setEvents([]);
           }
-          if (response.data.recommended_events && response.data.recommended_events.length > 0) {
-            setRecommended(response.data.recommended_events);
+          if (response.recommended_events && response.recommended_events.length > 0) {
+            setRecommended(response.recommended_events);
           }
         }
       } catch (error) {
@@ -103,10 +102,9 @@ const Events = () => {
     const fetchSavedEvents = async () => {
       if (user && user.id) {
         try {
-          const url = `${import.meta.env.VITE_BASE_URL}/events/saved?user_id=${user.id}`;
-          const response = await axios.get(url, { withCredentials: true });
-          if (response.data && response.data.events) {
-            setSavedEvents(response.data.events);
+          const response = await getSavedEvents(user.id);
+          if (response && response.events) {
+            setSavedEvents(response.events);
           }
         } catch (error) {
           console.error('Error fetching saved events:', error);
@@ -145,27 +143,24 @@ const Events = () => {
         image: getEventImage(eventData) || '',
         details: eventData.details || ''
       };
-      const response = await axios.post(
-        `${import.meta.env.VITE_BASE_URL}/events/save`,
-        payload,
-        { withCredentials: true }
-      );
-      if (response.data && response.data.event) {
-        setSavedEvents(prev => [...prev, response.data.event]);
-        toast.success(response.data.message);
+      
+      const response = await saveEvent(payload);
+      if (response && response.event) {
+        setSavedEvents(prev => [...prev, response.event]);
+        toast.success(response.message);
       }
     } catch (error) {
-      console.error('Error saving event:', error.response.data);
-      toast.error(error.response.data.error || 'Failed to save event');
+      console.error('Error saving event:', error);
+      toast.error(error.response?.data?.error || 'Failed to save event');
     }
   };
 
   //& handle delete saved event.
   const handleDeleteEvent = async (eventId) => {
     try {
-      const response = await axios.delete(`${import.meta.env.VITE_BASE_URL}/events/delete/${eventId}`, { withCredentials: true });
-      if (response.data && response.data.message) {
-        toast.success(response.data.message);
+      const response = await deleteEvent(eventId);
+      if (response && response.message) {
+        toast.success(response.message);
         setSavedEvents(prev => prev.filter(e => e.id !== eventId));
       }
     } catch (error) {

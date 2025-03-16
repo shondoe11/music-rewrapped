@@ -1,27 +1,26 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-toastify';
+import { register as registerUser } from '../api';
 
 const Register = () => {
   const { register, watch, handleSubmit, formState: { errors } } = useForm();
   const navigate = useNavigate();
   
-  const onSubmit = (data) => {
-    axios.post(`${import.meta.env.VITE_BASE_URL}/auth/rewrapped/register`, data, { withCredentials: true })
-      .then(res => {
-        if (res.data.message) {
-          toast.success(res.data.message);
-          navigate('/profile');
-        } else {
-          toast.info('Registration completed');
-        }
-      })
-      .catch(err => {
-        console.error('registration error:', err.response.data);
-        toast.error(err.response.data.error || 'Registration error occurred');
-      });
+  const onSubmit = async (data) => {
+    try {
+      const response = await registerUser(data);
+      if (response.message) {
+        toast.success(response.message);
+        navigate('/profile');
+      } else {
+        toast.info('Registration completed');
+      }
+    } catch (error) {
+      console.error('registration error:', error);
+      toast.error(error || 'Registration error occurred');
+    }
   };
 
   return (

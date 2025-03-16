@@ -2,32 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { useAuth } from '../hooks/useAuth';
-import axios from 'axios';
+import { 
+  getPromoterEvents, 
+  createPromoterEvent, 
+  updatePromoterEvent, 
+  deletePromoterEvent 
+} from '../api';
 
 const NewEventForm = ({ onEventAdded }) => {
   const { user } = useAuth();
   const { register, handleSubmit, formState: { errors }, reset } = useForm();
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     if (!user || !user.id) {
       toast.error("User not authenticated");
       return;
     }
     const payload = { ...data, user_id: user.id };
-    axios.post(`${import.meta.env.VITE_BASE_URL}/events/promoter`, payload, { withCredentials: true })
-      .then((res) => {
-        if (res.data.message) {
-          toast.success(res.data.message);
-          onEventAdded(res.data.event);
-          reset();
-        } else {
-          toast.error(res.data.error || 'Event submission failed');
-        }
-      })
-      .catch((err) => {
-        console.error('Event submission error:', err);
-        toast.error('Event submission failed');
-      });
+    try {
+      const response = await createPromoterEvent(payload);
+      if (response.message) {
+        toast.success(response.message);
+        onEventAdded(response.event);
+        reset();
+      } else {
+        toast.error(response.error || 'Event submission failed');
+      }
+    } catch (error) {
+      console.error('Event submission error:', error);
+      toast.error('Event submission failed');
+    }
   };
 
   return (
@@ -212,20 +216,19 @@ const UpdateEventForm = ({ event, onUpdated }) => {
     });
   }, [event, reset]);
 
-  const onSubmit = (data) => {
-    axios.put(`${import.meta.env.VITE_BASE_URL}/events/promoter/${event.id}`, { ...data, user_id: event.promoter_id }, { withCredentials: true })
-      .then((res) => {
-        if (res.data.message) {
-          toast.success(res.data.message);
-          onUpdated(res.data.event);
-        } else {
-          toast.error(res.data.error || 'Update failed');
-        }
-      })
-      .catch((err) => {
-        console.error('Update error:', err);
-        toast.error('Update failed');
-      });
+  const onSubmit = async (data) => {
+    try {
+      const response = await updatePromoterEvent(event.id, { ...data, user_id: event.promoter_id });
+      if (response.message) {
+        toast.success(response.message);
+        onUpdated(response.event);
+      } else {
+        toast.error(response.error || 'Update failed');
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      toast.error('Update failed');
+    }
   };
 
   return (
@@ -369,19 +372,21 @@ const PromoterPanel = () => {
   };
 
   useEffect(() => {
-    if (user && user.role === 'promoter') {
-      axios.get(`${import.meta.env.VITE_BASE_URL}/events/promoter?user_id=${user.id}`, { withCredentials: true })
-        .then(res => {
-          if (res.data.events) {
-            setPromoterEvents(res.data.events);
-            setSponsoredEvents(res.data.events);
+    async function fetchEvents() {
+      if (user && user.role === 'promoter') {
+        try {
+          const response = await getPromoterEvents(user.id);
+          if (response.events) {
+            setPromoterEvents(response.events);
+            setSponsoredEvents(response.events);
           }
-        })
-        .catch(err => {
-          console.error('Failed to fetch promoter events:', err);
+        } catch (error) {
+          console.error('Failed to fetch promoter events:', error);
           toast.error('Failed to load your events');
-        });
+        }
+      }
     }
+    fetchEvents();
   }, [user]);
 
   const renderContent = () => {
@@ -467,13 +472,13 @@ const PromoterPanel = () => {
                         <button 
                           onClick={() => {
                             if (window.confirm('Are you sure you want to delete this event?')) {
-                              axios.delete(`${import.meta.env.VITE_BASE_URL}/events/promoter/${event.id}`, { withCredentials: true })
-                                .then(res => {
-                                  if (res.data.message) {
-                                    toast.success(res.data.message);
+                              deletePromoterEvent(event.id)
+                                .then(response => {
+                                  if (response.message) {
+                                    toast.success(response.message);
                                     deleteEventFromState(event.id);
                                   } else {
-                                    toast.error(res.data.error || 'Deletion failed');
+                                    toast.error(response.error || 'Deletion failed');
                                   }
                                 })
                                 .catch(err => {

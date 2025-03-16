@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { logout } from '../api';
 
 const Navbar = () => {
-  const { user, logout } = useAuth(); //~ get current user and logout function
+  const { user, logout: clearAuthState } = useAuth(); //~ get current user and logout function
   const [isOpen, setIsOpen] = useState(false); //~ menu toggle state
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,14 +20,11 @@ const Navbar = () => {
   //& handle logout: call server logout -> clear oauth session -> clear client auth state
   const handleLogout = async () => {
     try {
-      await fetch(`${import.meta.env.VITE_BASE_URL}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
+      await logout();
     } catch (error) {
       console.error('logout error:', error);
     }
-    logout();
+    clearAuthState();
     navigate('/spotify-login');
   };
 

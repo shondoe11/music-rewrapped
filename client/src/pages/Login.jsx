@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useAuth } from '../hooks/useAuth';
+import { login } from '../api';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -25,21 +25,17 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-        const response = await axios.post(
-            `${import.meta.env.VITE_BASE_URL}/auth/rewrapped/login`,
-            { username, password },
-            { withCredentials: true }
-      );
+        const response = await login(username, password);
 
-      if (response.data.message) {
-        toast.success(response.data.message);
+      if (response.message) {
+        toast.success(response.message);
         navigate('/profile');
       } else {
         toast.info('Login successful');
       }
     } catch (error) {
-      console.error('login error:', error.response.data);
-      toast.error(error.response.data.error || 'Login error occurred');
+      console.error('login error:', error);
+      toast.error(error || 'Login error occurred');
     }
   };
 
