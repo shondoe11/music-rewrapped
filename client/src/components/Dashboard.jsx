@@ -3,10 +3,10 @@ import TopTracksChart from './TopTracksChart';
 import TopAlbumsChart from './TopAlbumsChart';
 import FavoriteGenresEvolution from './FavoriteGenresEvolution';
 import TopArtistsChart from './TopArtistsChart';
-import { getSpotifyTopTracks } from '../api';
+import { getSpotifyTopTracks, getSpotifyTopAlbums, getSpotifyTopArtists } from '../api';
 import { toast } from 'react-toastify';
 
-const Dashboard = ({ data, userId }) => {
+const Dashboard = ({ userId }) => {
   const timeFrames = [
     { label: 'Last 4 Weeks', value: 'short_term' },
     { label: 'Last 6 Months', value: 'medium_term' },
@@ -53,13 +53,7 @@ const Dashboard = ({ data, userId }) => {
   useEffect(() => {
     async function fetchTopAlbums() {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BASE_URL}/spotify/top-albums?user_id=${userId}&time_frame=${albumsTimeFrame}`, {
-          credentials: 'include'
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch top albums from Spotify');
-        }
-        const result = await response.json();
+        const result = await getSpotifyTopAlbums(userId, albumsTimeFrame);
         setTopAlbums(result.albums);
         const selectedFrame = timeFrames.find(tf => tf.value === albumsTimeFrame);
         toast.success(`Your Top Albums data switched to ${selectedFrame.label} successfully.`);
@@ -77,13 +71,7 @@ const Dashboard = ({ data, userId }) => {
   useEffect(() => {
     async function fetchTopArtists() {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BASE_URL}/spotify/top-artists?user_id=${userId}&time_frame=${artistsTimeFrame}&limit=12`, {
-          credentials: 'include'
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch top artists from Spotify');
-        }
-        const result = await response.json();
+        const result = await getSpotifyTopArtists(userId, artistsTimeFrame, 12);
         setTopArtists(result.artists);
         const selectedFrame = timeFrames.find(tf => tf.value === artistsTimeFrame);
         toast.success(`Your Top Artists data switched to ${selectedFrame.label} successfully.`);
