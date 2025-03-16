@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as d3 from 'd3';
+import { getSpotifyTopArtistsWithGenres } from '../api';
 
 const timeFrameMapping = [
   { label: 'Last 4 Weeks', value: 'short_term' },
@@ -17,8 +18,7 @@ const FavoriteGenresEvolution = ({ userId }) => {
     if (!userId) return;
     Promise.all(
       timeFrameMapping.map(tf =>
-        fetch(`${import.meta.env.VITE_BASE_URL}/spotify/top-artists?user_id=${userId}&time_frame=${tf.value}&limit=50`, { credentials: 'include' })
-          .then(res => res.json())
+        getSpotifyTopArtistsWithGenres(userId, tf.value, 50)
           .then(result => {
             const genreData = {}; //~ { genre: { count, totalRank, uniqueArtists: Set } }
             result.artists.forEach((artist, idx) => {
