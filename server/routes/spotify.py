@@ -8,9 +8,64 @@ spotify_bp = Blueprint('spotify', __name__)
 def index():
     return jsonify({'message': 'Welcome to the Spotify API endpoints.'})
 
+@spotify_bp.route('/recently-played', methods=['GET'])
+def recently_played():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'user_id is required'}), 400
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'user not found'}), 404
+
+    try:
+        limit = min(int(request.args.get('limit', 50)), 50)
+    except ValueError:
+        limit = 50
+
+    headers = {'Authorization': f'Bearer {user.oauth_token}'}
+    params = {
+        'limit': limit
+    }
+    
+    spotify_url = 'https://api.spotify.com/v1/me/player/recently-played'
+    response = requests.get(spotify_url, headers=headers, params=params)
+    
+    if response.status_code != 200:
+        return jsonify({
+            'error': 'failed to fetch recently played tracks from spotify',
+            'details': response.json()
+        }), response.status_code
+
+    data = response.json()
+    tracks = []
+    
+    for item in data.get('items', []):
+        track = item.get('track', {})
+        played_at = item.get('played_at')
+        
+        artists_data = []
+        for artist in track.get('artists', []):
+            artist_info = {
+                'name': artist.get('name'),
+                'spotify_url': artist.get('external_urls', {}).get('spotify')
+            }
+            artists_data.append(artist_info)
+            
+        track_info = {
+            'track_name': track.get('name'),
+            'artists': artists_data,
+            'artwork_url': track.get('album', {}).get('images', [{}])[0].get('url'),
+            'spotify_url': track.get('external_urls', {}).get('spotify'),
+            'played_at': played_at
+        }
+        tracks.append(track_info)
+
+    return jsonify({'tracks': tracks})
+
 @spotify_bp.route('/top-tracks', methods=['GET'])
 def get_top_tracks():
-    #& fetch user top tracks directly from spotify, limit 10 per call
+    #& fetch user top tracks directly from spotify
     user_id = request.args.get('user_id')
     if not user_id:
         return jsonify({'error': 'user_id is required'}), 400
@@ -27,9 +82,14 @@ def get_top_tracks():
     }
     time_range = mapping.get(time_frame, 'short_term')
 
+    try:
+        limit = int(request.args.get('limit', 10))
+    except ValueError:
+        limit = 10
+
     headers = {'Authorization': f'Bearer {user.oauth_token}'}
     params = {
-        'limit': 10,
+        'limit': limit,
         'time_range': time_range
     }
     spotify_url = 'https://api.spotify.com/v1/me/top/tracks'
@@ -63,7 +123,7 @@ def get_top_tracks():
 
 @spotify_bp.route('/top-albums', methods=['GET'])
 def get_top_albums():
-    #& approximate user's top albums by grouping top tracks by album; fetch biggest sample for aggregation
+    #& approximate user top albums by grouping top tracks by album; fetch biggest sample for aggregation
     user_id = request.args.get('user_id')
     if not user_id:
         return jsonify({'error': 'user_id is required'}), 400
@@ -78,10 +138,15 @@ def get_top_albums():
         'long_term': 'long_term'
     }
     time_range = mapping.get(time_frame, 'short_term')
+    
+    try:
+        client_limit = int(request.args.get('limit', 10))
+    except ValueError:
+        client_limit = 10
 
     headers = {'Authorization': f'Bearer {user.oauth_token}'}
     params = {
-        'limit': 50,  #~ use higher limit to get more tracks for aggregation
+        'limit': 50,  #~ use higher limit to get most tracks for aggregation
         'time_range': time_range
     }
     spotify_url = 'https://api.spotify.com/v1/me/top/tracks'
@@ -112,11 +177,12 @@ def get_top_albums():
 
     albums = list(album_dict.values())
     albums.sort(key=lambda x: x['count'], reverse=True)
+    albums = albums[:client_limit]
     return jsonify({'albums': albums})
 
 @spotify_bp.route('/top-artists', methods=['GET'])
 def get_top_artists():
-    #& fetch user top artists directly from spotify, limit 10 per call (or 12 if specified)
+    #& fetch user top artists directly from spotify
     user_id = request.args.get('user_id')
     if not user_id:
         return jsonify({'error': 'user_id is required'}), 400
@@ -166,14 +232,3 @@ def get_top_artists():
         artists.append(artist)
 
     return jsonify({'artists': artists})
-
-@spotify_bp.route('/recently-played', methods=['GET'])
-def recently_played():
-    #& placeholder logic first. in final ver, call Spotify API, process data, then return user's recently played tracks
-    sample_recent = {
-        'recently_played': [
-            {'name': 'Song X', 'artist': 'Artist Y', 'played_at': '2025-03-04T10:00:00Z'},
-            {'name': 'Song Z', 'artist': 'Artist W', 'played_at': '2025-03-04T09:45:00Z'}
-        ]
-    }
-    return jsonify(sample_recent)
