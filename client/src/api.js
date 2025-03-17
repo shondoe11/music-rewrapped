@@ -21,18 +21,27 @@ export async function getHomeData(userId) {
     }
 }
 
-export async function getSpotifyTopTracks(userId, timeFrame) {
+export async function getRecentlyPlayedTracks(userId, limit = 50) {
     try {
-        const response = await apiClient.get(`/spotify/top-tracks?user_id=${userId}&time_frame=${timeFrame}`);
+        const response = await apiClient.get(`/spotify/recently-played?user_id=${userId}&limit=${limit}`);
+        return response.data;
+    } catch (error) {
+        throw createContextualError(error, 'Failed to fetch recently played tracks');
+    }
+}
+
+export async function getSpotifyTopTracks(userId, timeFrame, limit = 50) {
+    try {
+        const response = await apiClient.get(`/spotify/top-tracks?user_id=${userId}&time_frame=${timeFrame}&limit=${limit}`);
         return response.data;
     } catch (error) {
         throw createContextualError(error, `Failed to fetch top tracks for ${timeFrame}`);
     }
 }
 
-export async function getSpotifyTopAlbums(userId, timeFrame) {
+export async function getSpotifyTopAlbums(userId, timeFrame, limit = 50) {
     try {
-        const response = await apiClient.get(`/spotify/top-albums?user_id=${userId}&time_frame=${timeFrame}`);
+        const response = await apiClient.get(`/spotify/top-albums?user_id=${userId}&time_frame=${timeFrame}&limit=${limit}`);
         return response.data;
     } catch (error) {
         throw createContextualError(error, `Failed to fetch top albums for ${timeFrame}`);
