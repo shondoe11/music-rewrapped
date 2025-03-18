@@ -51,20 +51,20 @@ const Navbar = () => {
               </Link>
             )}
             { !hideAuthLinks && user && (
-              user.role !== 'guest' ? (
-                <>
+              <>
+                {user.role !== 'guest' ? (
                   <Link to="/profile" className="hover:text-green-500">
                     Profile
                   </Link>
-                  <button onClick={handleLogout} className="hover:text-green-500">
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <Link to="/register" className="hover:text-green-500">
-                  Upgrade Account
-                </Link>
-              )
+                ) : (
+                  <Link to="/register" className="hover:text-green-500">
+                    Upgrade Account
+                  </Link>
+                )}
+                <button onClick={handleLogout} className="hover:text-green-500">
+                  Logout
+                </button>
+              </>
             )}
           </div>
           {/* Mobile */}
@@ -100,20 +100,20 @@ const Navbar = () => {
               </Link>
             )}
             { !hideAuthLinks && user && (
-              user.role !== 'guest' ? (
-                <>
+              <>
+                {user.role !== 'guest' ? (
                   <Link to="/profile" className="block px-3 py-2 rounded-md hover:bg-gray-700">
                     Profile
                   </Link>
-                  <button onClick={handleLogout} className="w-full text-left block px-3 py-2 rounded-md hover:bg-gray-700">
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <Link to="/register" className="block px-3 py-2 rounded-md hover:bg-gray-700">
-                  Upgrade Account
-                </Link>
-              )
+                ) : (
+                  <Link to="/register" className="block px-3 py-2 rounded-md hover:bg-gray-700">
+                    Upgrade Account
+                  </Link>
+                )}
+                <button onClick={handleLogout} className="w-full text-left block px-3 py-2 rounded-md hover:bg-gray-700">
+                  Logout
+                </button>
+              </>
             )}
           </div>
         </div>
