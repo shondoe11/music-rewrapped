@@ -82,19 +82,19 @@ const FavoriteGenresEvolution = ({ userId }) => {
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    //& margin and dimension adjustments for responsiveness
+    //& margin & dimension adjustments fr responsiveness
     const margin = { top: 20, right: 50, bottom: 120, left: 65 },
       width = 900 - margin.left - margin.right,
       height = 400 - margin.top - margin.bottom;
 
-    //& use topGenres state for keys so that all 10 items show in the legend
+    //& use topGenres state fr keys so all 10 items show in legend
     const keys = topGenres;
 
-    //& stack layout with wiggle offset for streamgraph effect
+    //& stack layout w wiggle offset fr streamgraph effect
     const stack = d3.stack().keys(keys).order(d3.stackOrderNone).offset(d3.stackOffsetWiggle);
     const series = stack(data);
 
-    //& X scale using time frame labels with minimal padding to stretch fully
+    //& X scale using time frame labels w minimal padding to stretch fully
     const x = d3.scalePoint()
       .domain(data.map(d => d.timeFrame))
       .range([0, width])
@@ -104,10 +104,23 @@ const FavoriteGenresEvolution = ({ userId }) => {
     const yMax = d3.max(series, layer => d3.max(layer, d => d[1]));
     const y = d3.scaleLinear().domain([yMin, yMax]).range([height, 0]);
 
-    //& color scale for genres
-    const color = d3.scaleOrdinal(d3.schemeCategory10).domain(keys);
+    //& color scale fr genres
+    const color = d3.scaleOrdinal()
+      .domain(keys)
+      .range([
+        "#4ADE80",
+        "#3B82F6",
+        "#F472B6",
+        "#FB923C",
+        "#A78BFA",
+        "#34D399",
+        "#F87171",
+        "#FBBF24",
+        "#60A5FA",
+        "#C084FC"
+      ]);
 
-    //& area generator for streamgraph with curved interpolation (using catmull rom for better curves)
+    //& area generator fr streamgraph w curved interpolation (using catmull rom for better curves)
     const area = d3.area()
       .x((d, i) => x(data[i].timeFrame))
       .y0(d => y(d[0]))
@@ -116,7 +129,7 @@ const FavoriteGenresEvolution = ({ userId }) => {
 
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    //& draw layers with tooltip interactivity
+    //& draw layers w tooltip interactivity
     g.selectAll(".layer")
       .data(series)
       .enter().append("path")
@@ -132,8 +145,18 @@ const FavoriteGenresEvolution = ({ userId }) => {
         const extra = datum[`_${d.key}`];
         d3.select(tooltipRef.current)
           .style("display", "block")
-          .style("background", "rgba(0, 0, 0, 0.7)")
-          .html(`<strong>Genre:</strong> ${d.key}<br/><strong>% Contribution:</strong> ${percentage}%<br/><strong># of Artists:</strong> ${extra.numArtists}<br/><strong>Avg Rank:</strong> ${extra.avgRank.toFixed(1)}`);
+          .style("background", "rgba(0, 0, 0, 0.85)")
+          .style("color", "#1DB954")
+          .style("border-radius", "8px")
+          .style("padding", "12px")
+          .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
+          .style("font-weight", "500")
+          .style("font-size", "14px")
+          .style("line-height", "1.5")
+          .html(`<strong style="color: #1DB954">Genre:</strong> <span style="color: white">${d.key}</span><br/>
+                 <strong style="color: #1DB954">% Contribution:</strong> <span style="color: white">${percentage}%</span><br/>
+                 <strong style="color: #1DB954"># of Artists:</strong> <span style="color: white">${extra.numArtists}</span><br/>
+                 <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${extra.avgRank.toFixed(1)}</span>`);
       })
       .on("mousemove", function(event) {
         d3.select(tooltipRef.current)
@@ -144,30 +167,47 @@ const FavoriteGenresEvolution = ({ userId }) => {
         d3.select(tooltipRef.current).style("display", "none");
       });
 
-    //& x-axis
+    //& x-axis format & styling
     g.append("g")
       .attr("transform", `translate(0,${height})`)
       .call(d3.axisBottom(x).tickSize(10))
       .selectAll("text")
-      .style("font-size", "18px")
-      .style("fill", "#fff");
+      .style("font-size", "16px")
+      .style("fill", "#1e293b")
+      .style("font-weight", "600");
+      
+    //& x-axis lines
+    g.selectAll(".domain")
+      .style("stroke", "rgba(30, 41, 59, 0.5)");
+    g.selectAll(".tick line")
+      .style("stroke", "rgba(30, 41, 59, 0.5)");
 
-    //& y-axis
+    //& y-axis format & styling
     const yAxis = g.append("g")
       .call(d3.axisLeft(y).ticks(5));
+    
     yAxis.selectAll("text")
-      .style("font-size", "18px")
-      .style("fill", "#fff");
+      .style("font-size", "14px")
+      .style("fill", "#1e293b")
+      .style("font-weight", "600");
+      
+    //& y-axis lines
+    yAxis.select(".domain")
+      .style("stroke", "rgba(30, 41, 59, 0.5)");
+    yAxis.selectAll(".tick line")
+      .style("stroke", "rgba(30, 41, 59, 0.5)");
+      
     yAxis.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -height / 2)
       .attr("y", -50)
-      .attr("fill", "#fff")
+      .attr("fill", "#1e293b")
       .attr("text-anchor", "middle")
-      .style("font-size", "18px")
+      .style("font-size", "16px")
+      .style("font-weight", "600")
       .text("Genre count");
 
-    //& legend positioned below the chart in two rows if needed.
+    //& legend positioning
     const legendAreaWidth = width;
     const legendItemWidth = 150;
     const itemsPerRow = Math.floor(legendAreaWidth / legendItemWidth) || 1;
@@ -185,18 +225,30 @@ const FavoriteGenresEvolution = ({ userId }) => {
       legend.append("text")
         .attr("x", col * legendItemWidth + 22)
         .attr("y", row * 30 + 14)
-        .style("font-size", "18px")
-        .style("fill", "#fff")
+        .style("font-size", "14px")
+        .style("fill", "#1e293b")
+        .style("font-weight", "600")
         .text(key);
     });
   }, [data, topGenres]);
 
   return (
-    <div className='mt-4'>
-      <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <svg ref={svgRef} viewBox="0 0 900 400" preserveAspectRatio="xMidYMid meet"></svg>
+    <div className="mt-4">
+      <div className="bg-gray-100/10 backdrop-blur-sm rounded-xl border border-gray-300/20 shadow-lg overflow-hidden p-4">
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <svg ref={svgRef} viewBox="0 0 900 400" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
       </div>
-      <div ref={tooltipRef} style={{ position: 'absolute', display: 'none' }}></div>
+      <div 
+        ref={tooltipRef} 
+        style={{ 
+          position: 'absolute', 
+          display: 'none',
+          zIndex: 10,
+          pointerEvents: 'none',
+          transition: 'all 0.2s ease'
+        }}
+      ></div>
     </div>
   );
 };
