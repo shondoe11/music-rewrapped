@@ -1,10 +1,14 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, Response
 from server.app import socketio
 from server.extensions import db
-from server.model import Event, SavedEvent
-from datetime import datetime
+from server.model import Event, SavedEvent, EventMetricsLog
+from datetime import datetime, timezone, timedelta
 import os
 import requests
+import csv
+import io
+import json
+from sqlalchemy import func
 
 events_bp = Blueprint('events', __name__)
 
@@ -63,6 +67,10 @@ def save_event():
         )
         db.session.add(event)
         db.session.commit()
+    else:
+        #~ increment saves count when an event is saved by a user
+        event.saves = (event.saves or 0) + 1
+        db.session.commit()
 
     #~ create new saved event record if not already saved by this user
     existing = SavedEvent.query.filter_by(user_id=user_id, event_id=event.id).first()
@@ -70,6 +78,23 @@ def save_event():
         saved = SavedEvent(user_id=user_id, event_id=event.id)
         db.session.add(saved)
         db.session.commit()
+        
+    today = datetime.now(timezone.utc).date()
+    daily_log = EventMetricsLog.query.filter_by(
+        event_id=event.id, 
+        date=today
+    ).first()
+
+    if daily_log:
+        daily_log.saves += 1
+    else:
+        daily_log = EventMetricsLog(
+            event_id=event.id,
+            date=today,
+            views=0,
+            saves=1
+        )
+        db.session.add(daily_log)
 
     return jsonify({
         'message': 'Event saved successfully',
@@ -81,7 +106,8 @@ def save_event():
             'promoter_info': event.promoter_info,
             'tags': event.tags,
             'url': event.url,
-            'image': event.image
+            'image': event.image,
+            'saves': event.saves
         }
     }), 201
 
@@ -125,6 +151,10 @@ def all_events():
     internal_sponsored = Event.query.filter_by(is_sponsored=True).all()
     recommended_events = []
     for ev in internal_sponsored:
+        #~ increment view count for each sponsored event
+        ev.views = (ev.views or 0) + 1
+        db.session.commit()
+        
         recommended_events.append({
             'id': ev.id,
             'title': ev.title,
@@ -140,7 +170,9 @@ def all_events():
             'listening_threshold': ev.listening_threshold,
             'target_roles': ev.target_roles,
             'url': ev.url,
-            'image': ev.image
+            'image': ev.image,
+            'views': ev.views,
+            'saves': ev.saves
         })
     return jsonify({
         'recommended_events': recommended_events,
@@ -181,7 +213,7 @@ def get_saved_events():
         user_id_int = int(user_id) #~ convert uid to int as req by model
     except ValueError:
         return jsonify({'error': 'Invalid user_id format'}), 400
-    # Perform a join between SavedEvent and Event to get current event details.
+    #~ perform join between SavedEvent & Event to get current event details
     saved = db.session.query(Event).join(SavedEvent, Event.id == SavedEvent.event_id).filter(SavedEvent.user_id == user_id_int).all()
     saved_list = []
     for e in saved:
@@ -268,7 +300,10 @@ def promoter_events():
             target_genre_interest=data.get('targetGenreInterest'),
             target_artist_interest=data.get('targetArtistInterest'),
             listening_threshold=int(data.get('listeningThreshold')) if data.get('listeningThreshold') else None,
-            target_roles=data.get('targetRoles', [])
+            target_roles=data.get('targetRoles', []),
+            views=0,
+            saves=0,
+            engagement=0
         )
         #& if event submitted by promoter role, mark as sponsored
         if data.get('promoter_info') or True:  #~ condition adjustable
@@ -292,7 +327,9 @@ def promoter_events():
             'listening_threshold': new_event.listening_threshold,
             'target_roles': new_event.target_roles,
             'url': new_event.url,
-            'image': new_event.image
+            'image': new_event.image,
+            'views': 0,
+            'saves': 0
         }}), 201
 
 #& update promoter event details
@@ -345,7 +382,9 @@ def update_promoter_event(event_id):
         'target_genre_interest': event.target_genre_interest,
         'target_artist_interest': event.target_artist_interest,
         'listening_threshold': event.listening_threshold,
-        'target_roles': event.target_roles
+        'target_roles': event.target_roles,
+        'views': event.views,
+        'saves': event.saves
     }}), 200
 
 @events_bp.route('/promoter/<int:event_id>', methods=['DELETE'])
@@ -359,3 +398,432 @@ def delete_promoter_event(event_id):
     db.session.delete(event)
     db.session.commit()
     return jsonify({'message': 'Event deleted successfully', 'event_id': event_id}), 200
+
+#& track event view
+@events_bp.route('/track/view/<int:event_id>', methods=['POST'])
+def track_event_view(event_id):
+    event = Event.query.get(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+    
+    today = datetime.now(timezone.utc).date()
+    
+    #~ update daily metrics log
+    daily_log = EventMetricsLog.query.filter_by(
+        event_id=event_id, 
+        date=today
+    ).first()
+    
+    if daily_log:
+        daily_log.views += 1
+    else:
+        daily_log = EventMetricsLog(
+            event_id=event_id,
+            date=today,
+            views=1,
+            saves=0
+        )
+        db.session.add(daily_log)
+    
+    #~ update overall event metrics
+    event.views = (event.views or 0) + 1
+    event.engagement = event.views + ((event.saves or 0) * 2)
+    
+    db.session.commit()
+    return jsonify({
+        'message': 'View tracked successfully',
+        'event_id': event_id,
+        'views': event.views,
+        'engagement': event.engagement
+    }), 200
+
+#& get analytics fr promoter's events
+@events_bp.route('/analytics/promoter', methods=['GET'])
+def get_promoter_analytics():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'user_id is required'}), 400
+    
+    try:
+        user_id_int = int(user_id)
+    except ValueError:
+        return jsonify({'error': 'Invalid user_id format'}), 400
+        
+    #~ get all events fr this promoter
+    events = Event.query.filter_by(promoter_id=user_id_int).all()
+    
+    if not events:
+        return jsonify({
+            'total_events': 0,
+            'total_views': 0,
+            'total_saves': 0,
+            'average_engagement': 0,
+            'events_analytics': []
+        }), 200
+    
+    #~ calculate summary stats
+    total_events = len(events)
+    total_views = sum(event.views or 0 for event in events)
+    total_saves = sum(event.saves or 0 for event in events)
+    avg_engagement = sum(event.engagement or 0 for event in events) / total_events if total_events > 0 else 0
+    
+    #~ compile detailed analytics fr each event
+    events_analytics = []
+    for event in events:
+        save_rate = (event.saves or 0) / (event.views or 1) * 100  #~ prevent division by zero
+        
+        events_analytics.append({
+            'id': event.id,
+            'title': event.title,
+            'views': event.views or 0,
+            'saves': event.saves or 0,
+            'engagement': event.engagement or 0,
+            'save_rate': round(save_rate, 2),
+            'event_date': event.event_date.isoformat() if event.event_date else None,
+            'status': event.status,
+            'target_country': event.target_country,
+            'target_genre_interest': event.target_genre_interest,
+            'target_artist_interest': event.target_artist_interest
+        })
+    
+    #~ sort events by engagement score (descending)
+    events_analytics.sort(key=lambda x: x['engagement'], reverse=True)
+    
+    return jsonify({
+        'total_events': total_events,
+        'total_views': total_views,
+        'total_saves': total_saves,
+        'average_engagement': round(avg_engagement, 2),
+        'events_analytics': events_analytics
+    }), 200
+    
+@events_bp.route('/analytics/time-series/<int:event_id>', methods=['GET'])
+def event_time_series(event_id):
+    """Get time-series analytics data for a specific event."""
+    event = Event.query.get(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+        
+    #~ check if user has permission to view this data
+    user_id = request.args.get('user_id')
+    if not user_id or int(user_id) != event.promoter_id:
+        return jsonify({'error': 'Unauthorized access'}), 403
+        
+    #~ get time range parameters
+    days = request.args.get('days', 30, type=int)
+    end_date = datetime.now(timezone.utc).date()
+    start_date = end_date - timedelta(days=days)
+    
+    #~ query daily metrics
+    daily_metrics = EventMetricsLog.query.filter(
+        EventMetricsLog.event_id == event_id,
+        EventMetricsLog.date >= start_date,
+        EventMetricsLog.date <= end_date
+    ).order_by(EventMetricsLog.date).all()
+    
+    #~ fill in missing dates w zero values
+    metrics_by_date = {m.date.isoformat(): {'views': m.views, 'saves': m.saves} for m in daily_metrics}
+    
+    date_range = []
+    current_date = start_date
+    while current_date <= end_date:
+        date_str = current_date.isoformat()
+        if date_str not in metrics_by_date:
+            metrics_by_date[date_str] = {'views': 0, 'saves': 0}
+        
+        date_range.append({
+            'date': date_str,
+            'views': metrics_by_date[date_str]['views'],
+            'saves': metrics_by_date[date_str]['saves'],
+            'engagement': metrics_by_date[date_str]['views'] + (metrics_by_date[date_str]['saves'] * 2)
+        })
+        current_date += timedelta(days=1)
+    
+    #~ calculate weekly aggregations
+    weekly_metrics = {}
+    for entry in date_range:
+        date_obj = datetime.fromisoformat(entry['date'])
+        year, week_num, _ = date_obj.isocalendar()
+        week_key = f"{year}-W{week_num:02d}"
+        
+        if week_key not in weekly_metrics:
+            weekly_metrics[week_key] = {'views': 0, 'saves': 0, 'engagement': 0}
+            
+        weekly_metrics[week_key]['views'] += entry['views']
+        weekly_metrics[week_key]['saves'] += entry['saves']
+        weekly_metrics[week_key]['engagement'] += entry['engagement']
+    
+    weekly_range = [
+        {'week': week, **metrics}
+        for week, metrics in sorted(weekly_metrics.items())
+    ]
+    
+    return jsonify({
+        'event_id': event_id,
+        'time_series': {
+            'daily': date_range,
+            'weekly': weekly_range
+        },
+        'summary': {
+            'total_views': sum(entry['views'] for entry in date_range),
+            'total_saves': sum(entry['saves'] for entry in date_range),
+            'average_daily_views': round(sum(entry['views'] for entry in date_range) / len(date_range), 2),
+            'average_daily_saves': round(sum(entry['saves'] for entry in date_range) / len(date_range), 2)
+        }
+    })
+
+@events_bp.route('/analytics/time-series/promoter', methods=['GET'])
+def promoter_time_series():
+    """Get time-series analytics data for all events by a promoter."""
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'user_id is required'}), 400
+    
+    #~ get time range parameters
+    days = request.args.get('days', 30, type=int)
+    end_date = datetime.now(timezone.utc).date()
+    start_date = end_date - timedelta(days=days)
+    
+    #~ get all events by this promoter
+    events = Event.query.filter_by(promoter_id=int(user_id)).all()
+    event_ids = [event.id for event in events]
+    
+    if not event_ids:
+        return jsonify({
+            'time_series': {
+                'daily': [],
+                'weekly': []
+            },
+            'summary': {
+                'total_views': 0,
+                'total_saves': 0,
+                'average_daily_views': 0,
+                'average_daily_saves': 0
+            }
+        })
+    
+    #~ query aggregated daily metrics fr all events
+    query = db.session.query(
+        EventMetricsLog.date,
+        func.sum(EventMetricsLog.views).label('views'),
+        func.sum(EventMetricsLog.saves).label('saves')
+    ).filter(
+        EventMetricsLog.event_id.in_(event_ids),
+        EventMetricsLog.date >= start_date,
+        EventMetricsLog.date <= end_date
+    ).group_by(
+        EventMetricsLog.date
+    ).order_by(
+        EventMetricsLog.date
+    )
+    
+    daily_results = query.all()
+    
+    #~ format results & fill missing dates
+    metrics_by_date = {row.date.isoformat(): {'views': row.views, 'saves': row.saves} for row in daily_results}
+    
+    date_range = []
+    current_date = start_date
+    while current_date <= end_date:
+        date_str = current_date.isoformat()
+        if date_str not in metrics_by_date:
+            metrics_by_date[date_str] = {'views': 0, 'saves': 0}
+        
+        date_range.append({
+            'date': date_str,
+            'views': metrics_by_date[date_str]['views'],
+            'saves': metrics_by_date[date_str]['saves'],
+            'engagement': metrics_by_date[date_str]['views'] + (metrics_by_date[date_str]['saves'] * 2)
+        })
+        current_date += timedelta(days=1)
+    
+    #~ weekly aggregations (similar to event-specific endpoint)
+    weekly_metrics = {}
+    for entry in date_range:
+        date_obj = datetime.fromisoformat(entry['date'])
+        year, week_num, _ = date_obj.isocalendar()
+        week_key = f"{year}-W{week_num:02d}"
+        
+        if week_key not in weekly_metrics:
+            weekly_metrics[week_key] = {'views': 0, 'saves': 0, 'engagement': 0}
+            
+        weekly_metrics[week_key]['views'] += entry['views']
+        weekly_metrics[week_key]['saves'] += entry['saves']
+        weekly_metrics[week_key]['engagement'] += entry['engagement']
+    
+    weekly_range = [
+        {'week': week, **metrics}
+        for week, metrics in sorted(weekly_metrics.items())
+    ]
+    
+    return jsonify({
+        'time_series': {
+            'daily': date_range,
+            'weekly': weekly_range
+        },
+        'summary': {
+            'total_views': sum(entry['views'] for entry in date_range),
+            'total_saves': sum(entry['saves'] for entry in date_range),
+            'average_daily_views': round(sum(entry['views'] for entry in date_range) / len(date_range), 2),
+            'average_daily_saves': round(sum(entry['saves'] for entry in date_range) / len(date_range), 2)
+        }
+    })
+
+@events_bp.route('/export/analytics/<int:event_id>', methods=['GET'])
+def export_event_analytics(event_id):
+    """Export analytics data for a specific event."""
+    event = Event.query.get(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+        
+    #~ check if user has permission to export data
+    user_id = request.args.get('user_id')
+    if not user_id or int(user_id) != event.promoter_id:
+        return jsonify({'error': 'Unauthorized access'}), 403
+        
+    #~ get export format
+    export_format = request.args.get('format', 'csv')
+    if export_format not in ['csv', 'json']:
+        return jsonify({'error': 'Unsupported export format'}), 400
+        
+    #~ get time range params
+    days = request.args.get('days', 30, type=int)
+    end_date = datetime.now(timezone.utc).date()
+    start_date = end_date - timedelta(days=days)
+    
+    #~ get time series data
+    daily_metrics = EventMetricsLog.query.filter(
+        EventMetricsLog.event_id == event_id,
+        EventMetricsLog.date >= start_date,
+        EventMetricsLog.date <= end_date
+    ).order_by(EventMetricsLog.date).all()
+    
+    #~ fill missing dates
+    metrics_by_date = {m.date.isoformat(): {'views': m.views, 'saves': m.saves} for m in daily_metrics}
+    
+    date_range = []
+    current_date = start_date
+    while current_date <= end_date:
+        date_str = current_date.isoformat()
+        if date_str not in metrics_by_date:
+            metrics_by_date[date_str] = {'views': 0, 'saves': 0}
+        
+        date_range.append({
+            'date': date_str,
+            'views': metrics_by_date[date_str]['views'],
+            'saves': metrics_by_date[date_str]['saves'],
+            'engagement': metrics_by_date[date_str]['views'] + (metrics_by_date[date_str]['saves'] * 2)
+        })
+        current_date += timedelta(days=1)
+    
+    #~ create export data
+    export_data = {
+        'event': {
+            'id': event.id,
+            'title': event.title,
+            'location': event.location,
+            'event_date': event.event_date.isoformat() if event.event_date else None,
+            'total_views': event.views,
+            'total_saves': event.saves,
+            'engagement': event.engagement
+        },
+        'time_series': date_range
+    }
+    
+    if export_format == 'json':
+        #~ return JSON
+        return jsonify(export_data)
+    else:
+        #~ return CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        #~ write header row
+        writer.writerow(['date', 'views', 'saves', 'engagement'])
+        
+        #~ write data rows
+        for entry in date_range:
+            writer.writerow([
+                entry['date'],
+                entry['views'],
+                entry['saves'],
+                entry['engagement']
+            ])
+        
+        #~ prep response
+        response = Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename=event_{event_id}_analytics.csv'
+            }
+        )
+        
+        return response
+
+@events_bp.route('/export/analytics/promoter', methods=['GET'])
+def export_promoter_analytics():
+    """Export analytics data for all events by a promoter."""
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'user_id is required'}), 400
+    
+    #~ get export format
+    export_format = request.args.get('format', 'csv')
+    if export_format not in ['csv', 'json']:
+        return jsonify({'error': 'Unsupported export format'}), 400
+        
+    #~ get all events by this promoter
+    events = Event.query.filter_by(promoter_id=int(user_id)).all()
+    
+    if not events:
+        return jsonify({'error': 'No events found for this promoter'}), 404
+    
+    #~ prep export data fr each event
+    event_data = []
+    for event in events:
+        event_data.append({
+            'id': event.id,
+            'title': event.title,
+            'location': event.location,
+            'event_date': event.event_date.isoformat() if event.event_date else None,
+            'views': event.views or 0,
+            'saves': event.saves or 0,
+            'engagement': event.engagement or 0,
+            'save_rate': round((event.saves or 0) / (event.views or 1) * 100, 2)
+        })
+    
+    if export_format == 'json':
+        #~ return JSON
+        return jsonify({'events': event_data})
+    else:
+        #~ return CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        #~ write header row
+        writer.writerow(['id', 'title', 'location', 'event_date', 'views', 'saves', 'engagement', 'save_rate'])
+        
+        #~ write data rows
+        for event in event_data:
+            writer.writerow([
+                event['id'],
+                event['title'],
+                event['location'],
+                event['event_date'],
+                event['views'],
+                event['saves'],
+                event['engagement'],
+                event['save_rate']
+            ])
+        
+        #~ prep response
+        response = Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename=promoter_{user_id}_analytics.csv'
+            }
+        )
+        
+        return response
