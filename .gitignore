@@ -39,6 +39,8 @@ Thumbs.db
 # celery
 celerybeat-schedule
 celerybeat-schedule.db
+celerybeat-schedule-shm
+celerybeat-schedule-wal
 
 # flask
 flask_session/
