@@ -104,6 +104,9 @@ class Event(db.Model):
     target_artist_interest = db.Column(db.String(256))  #~ comma-separated list
     listening_threshold = db.Column(db.Integer)
     target_roles = db.Column(JSONB)  #~ store roles in arr
+    views = db.Column(db.Integer, default=0)
+    saves = db.Column(db.Integer, default=0)
+    engagement = db.Column(db.Integer, default=0)
     
     def __repr__(self):
         return f'<Event {self.title} on {self.event_date}>'
@@ -119,6 +122,20 @@ class SavedEvent(db.Model):
     
     def __repr__(self):
         return f'<SavedEvent user:{self.user_id} event:{self.event_id}>'
+
+#& time-stamped analytics data for Events
+class EventMetricsLog(db.Model):
+    __tablename__ = 'event_metrics_log'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id', ondelete='CASCADE'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    views = db.Column(db.Integer, default=0)
+    saves = db.Column(db.Integer, default=0)
+    #~ Add index for faster queries
+    __table_args__ = (
+        db.Index('idx_event_date', 'event_id', 'date'),
+    )
 
 #& API integration schema: logs API calls to external APIs
 class APIIntegrationLog(db.Model):
