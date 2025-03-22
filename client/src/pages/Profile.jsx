@@ -43,27 +43,27 @@ const Profile = () => {
   }, [prefs, resetPrefs]);
 
   useEffect(() => {
-    async function fetchUserData() {
-      try {
-        const response = await getCurrentUser();
-        if (response.user) {
-          login(response.user);
-          setProfileData({
-            profile_image_url: response.user.profile_image_url || '',
-            display_name: response.user.display_name || 'N/A',
-            email: response.user.email || 'N/A',
-            country: response.user.country || 'N/A',
-            followers: response.user.followers || 'N/A',
-            username: response.user.username || 'N/A'
-          });
-        }
-      } catch (err) {
-        console.error('Failed to fetch profile data:', err);
-        toast.error('Failed to load profile data');
+  async function fetchUserData() {
+    try {
+      const response = await getCurrentUser();
+      if (response.user) {
+        login(response.user);
+        setProfileData({
+          profile_image_url: response.user.profile_image_url || '',
+          display_name: response.user.display_name || 'N/A',
+          email: response.user.email || 'N/A',
+          country: response.user.country || 'N/A',
+          followers: response.user.followers || 'N/A',
+          username: response.user.username || 'N/A'
+        });
       }
+    } catch (err) {
+      console.error('Failed to fetch profile data:', err);
+      toast.error('Failed to load profile data');
     }
-    fetchUserData();
-  }, [login]);
+  }
+  fetchUserData();
+}, []);
 
   useEffect(() => {
     async function fetchPreferences() {
