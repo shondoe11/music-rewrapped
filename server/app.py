@@ -42,6 +42,8 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(events_bp, url_prefix='/events')
     from .routes.home import home_bp
     app.register_blueprint(home_bp, url_prefix='/home')
+    from server.routes.analytics import analytics_bp
+    app.register_blueprint(analytics_bp, url_prefix='/analytics')
     #& simple test route
     @app.route('/')
     def index():
