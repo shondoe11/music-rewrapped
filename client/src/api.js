@@ -228,44 +228,10 @@ export async function deleteEvent(eventId) {
     }
 }
 
-//* Promoter API
+//* Promoter API - Import from Promoter Service
+import promoterService from './services/promoterService';
 
-//& get all sponsored events
-export async function getPromoterEvents(userId) {
-    try {
-        const response = await apiClient.get(`/events/promoter?user_id=${userId}`);
-        return response.data;
-    } catch (error) {
-        throw createContextualError(error, 'Failed to fetch promoter events');
-    }
-}
-
-//& create promoter event
-export async function createPromoterEvent(eventData) {
-    try {
-        const response = await apiClient.post('/events/promoter', eventData);
-        return response.data;
-    } catch (error) {
-        throw createContextualError(error, 'Failed to create promoter event');
-    }
-}
-
-//& update promoter event
-export async function updatePromoterEvent(eventId, eventData) {
-    try {
-        const response = await apiClient.put(`/events/promoter/${eventId}`, eventData);
-        return response.data;
-    } catch (error) {
-        throw createContextualError(error, `Failed to update promoter event ${eventId}`);
-    }
-}
-
-//& delete promoter event
-export async function deletePromoterEvent(eventId) {
-    try {
-        const response = await apiClient.delete(`/events/promoter/${eventId}`);
-        return response.data;
-    } catch (error) {
-        throw createContextualError(error, `Failed to delete promoter event ${eventId}`);
-    }
-}
+export const getPromoterEvents = promoterService.getPromoterEvents;
+export const createPromoterEvent = promoterService.createPromoterEvent;
+export const updatePromoterEvent = promoterService.updatePromoterEvent;
+export const deletePromoterEvent = promoterService.deletePromoterEvent;
