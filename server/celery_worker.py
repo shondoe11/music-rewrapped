@@ -16,11 +16,15 @@ def make_celery(app):
     #~ use app config in celery
     celery.conf.update(app.config)
     
-    #~ periodic task looping thru all active users every 15 min
+    #~ periodic task looping thru all active users every custom interval
     celery.conf.beat_schedule = {
-        'sync-all-active-users-every-15-minutes': {
-            'task': 'server.tasks.sync_tasks.sync_all_users', #~new task to loop thru users
-            'schedule': crontab(minute='*/15')
+        'sync-all-active-users-every-hour': {
+            'task': 'server.tasks.sync_tasks.sync_all_users',
+            'schedule': crontab(minute=0)  #~ run at the top of every hr
+        },
+        'sync-recently-played-every-15-minutes': {
+            'task': 'server.tasks.sync_tasks.fetch_recent_played_all_users',
+            'schedule': crontab(minute='*/15')  #~ run every 15 min
         }
     }
     

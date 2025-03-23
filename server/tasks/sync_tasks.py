@@ -175,3 +175,17 @@ def sync_all_users():
     db.session.commit()
     
     return {'message': 'all users syncing tasks triggered'}
+
+@shared_task
+def fetch_recent_played_all_users():
+    """
+    Focused task that only fetches recently played tracks for all users
+    who have opted into tracking. Runs more frequently than the full sync.
+    """
+    #~ get only users who have opted to storing listening history
+    users = User.query.filter_by(store_listening_history=True).all()
+    
+    for user in users:
+        fetch_listening_history.delay(user.id)
+    
+    return {'message': f'Recently played fetch triggered for {len(users)} users'}
