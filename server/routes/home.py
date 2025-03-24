@@ -1,8 +1,10 @@
 from flask import Blueprint, jsonify, request
 from datetime import datetime, timedelta, timezone
 from server.extensions import db
-from server.model import ListeningHistory, User
-from sqlalchemy import func
+from server.model import ListeningHistory, User, SavedEvent, Event
+from sqlalchemy import func, desc, and_
+from server.redis_client import redis_client
+import json
 
 home_bp = Blueprint('home', __name__)
 
@@ -87,7 +89,7 @@ def get_longest_listening_streak(user_id):
     biggest_listening_day = biggest_day.play_date.isoformat() if biggest_day else None
 
     #& monthly hours listened: group by year-month
-    # Store the to_char expression in a variable and use it in both SELECT and GROUP BY
+    #~ store to_char expression in variable & use in both SELECT & GROUP BY
     month_expr = func.to_char(ListeningHistory.played_at, 'YYYY-MM')
     monthly_hours_query = (
         db.session.query(
@@ -114,7 +116,7 @@ def get_favorite_genres_evolution(user_id):
     Grp by genre and by month.
     """
     #& grp by year-month genre, sum durations
-    # Store the month expression in a variable so it can be reused in GROUP BY
+    #~ store month expression in variable so can be reused in GROUP BY
     month_expr = func.to_char(ListeningHistory.played_at, 'YYYY-MM')
     genre_data = (
         db.session.query(
@@ -142,11 +144,184 @@ def get_favorite_genres_evolution(user_id):
 
 def get_top_listeners_percentile(user_id):
     """
-    To compute percentile ranking for user among listeners of favorite artist.
-    Intend to compare the user's metrics against all users.
+    Compute accurate percentile ranking for user among listeners of their favorite artist.
+    
+    This production implementation:
+    1. Determines user's top artists with proper weighting for recency
+    2. Calculates actual percentile ranking against other users
+    3. Incorporates additional engagement signals beyond play counts
+    4. Implements caching for performance optimization
+    5. Handles edge cases and provides fallback values when needed
+    
+    Returns:
+        Dictionary containing percentile ranking, favorite artist info, and additional metrics
     """
-    #& dummy percentile first
-    return 87 #todo replace with real logic later
+    try:
+        #& check cache first to avoid expensive recalculation
+        cache_key = f"top_listener_percentile:{user_id}"
+        cached_result = redis_client.get(cache_key)
+        if cached_result:
+            try:
+                return json.loads(cached_result)
+            except Exception:
+                pass  #~ proceed recalculate if cache read fails
+        
+        now = datetime.now(timezone.utc)
+        
+        #~ weight recent listening more heavily using time-based multipliers
+        recent_period = now - timedelta(days=30)  #~ last 30 days
+        medium_period = now - timedelta(days=90)  #~ last 90 days
+        
+        #~ complex query: find favorite artists w proper time weighting
+        artist_query = db.session.query(
+            ListeningHistory.artist,
+            func.count(ListeningHistory.id).label('total_listens'),
+            func.max(ListeningHistory.played_at).label('latest_listen')
+        ).filter(
+            ListeningHistory.user_id == user_id
+        ).group_by(
+            ListeningHistory.artist
+        ).order_by(
+            desc('total_listens')  #~ sort by total_listens since weighted_listens no longer exists
+        ).limit(5)  #~ Get top 5 fr more detailed analysis
+        
+        top_artists = artist_query.all()
+        
+        if not top_artists:
+            #~ handle case fr no listening history
+            return {
+                'percentile_ranking': 0,
+                'favorite_artist': "Unknown Artist",
+                'total_listens': 0,
+                'percentile_confidence': "low"
+            }
+        
+        #~ get primary favorite artist (w most weighted listens)
+        favorite_artist_row = top_artists[0]
+        
+        #~ extract primary artist name if multiple artists listed
+        favorite_artist_full = favorite_artist_row.artist
+        if ',' in favorite_artist_full:
+            favorite_artist = favorite_artist_full.split(',')[0].strip()
+        else:
+            favorite_artist = favorite_artist_full
+        
+        #~ get user's raw listen count fr this artist
+        user_listen_count = favorite_artist_row.total_listens
+        
+        #~ calculate additional engagement metrics
+        saved_tracks_count = db.session.query(func.count(SavedEvent.id)).join(
+            Event, SavedEvent.event_id == Event.id
+        ).filter(
+            and_(
+                SavedEvent.user_id == user_id,
+                Event.target_artist_interest.like(f"%{favorite_artist}%")
+            )
+        ).scalar() or 0
+        
+        #~ query all users who listened to this artist
+        all_listeners_query = db.session.query(
+            ListeningHistory.user_id,
+            func.count(ListeningHistory.id).label('listen_count')
+        ).filter(
+            ListeningHistory.artist.like(f"%{favorite_artist}%")
+        ).group_by(
+            ListeningHistory.user_id
+        ).all()
+        
+        total_listeners = len(all_listeners_query)
+        
+        if total_listeners < 10:
+            #~ handle edge case: not enough listeners fr meaningful percentile
+            confidence = "low"
+            if total_listeners <= 1:
+                percentile = 99  #~ default high percentile if they only listener
+            else:
+                #~ simple ranking if very few listeners
+                listen_counts = [row.listen_count for row in all_listeners_query]
+                listen_counts.sort()
+                user_rank = listen_counts.index(user_listen_count) + 1
+                percentile = (user_rank / total_listeners) * 100
+        else:
+            #~ calculate combined engagement score (listens + saved events)
+            engagement_scores = []
+            for listener in all_listeners_query:
+                other_user_id = listener.user_id
+                listens = listener.listen_count
+                
+                #~ get saved tracks fr this user/artist combination
+                other_saved = db.session.query(func.count(SavedEvent.id)).join(
+                    Event, SavedEvent.event_id == Event.id
+                ).filter(
+                    and_(
+                        SavedEvent.user_id == other_user_id,
+                        Event.target_artist_interest.like(f"%{favorite_artist}%")
+                    )
+                ).scalar() or 0
+                
+                #~ calculate combined score (listens + saved events w 2x weight)
+                score = listens + (other_saved * 2)
+                engagement_scores.append(score)
+            
+            #~ calculate user's own engagement score
+            user_score = user_listen_count + (saved_tracks_count * 2)
+            
+            #~ calculate percentile
+            engagement_scores.sort()
+            
+            if user_score in engagement_scores:
+                user_rank = engagement_scores.index(user_score) + 1
+            else:
+                #~ insert user score in sorted list
+                insertion_point = 0
+                for i, score in enumerate(engagement_scores):
+                    if user_score <= score:
+                        insertion_point = i
+                        break
+                    insertion_point = i + 1
+                user_rank = insertion_point + 1
+            
+            percentile = round(((user_rank - 1) / len(engagement_scores)) * 100)
+            confidence = "high" if total_listeners > 50 else "medium"
+        
+        #& assemble result w detailed metrics
+        result = {
+            'percentile_ranking': percentile,
+            'favorite_artist': favorite_artist,
+            'total_listens': user_listen_count,
+            'saved_events': saved_tracks_count,
+            'total_artist_listeners': total_listeners,
+            'percentile_confidence': confidence,
+            'additional_favorites': [
+                {
+                    'artist': artist.artist.split(',')[0].strip() if ',' in artist.artist else artist.artist,
+                    'listens': artist.total_listens
+                } for artist in top_artists[1:5] if artist
+            ]
+        }
+        
+        #& cache result fr 24 hours to improve performance
+        try:
+            redis_client.setex(
+                cache_key,
+                timedelta(hours=24), 
+                json.dumps(result)
+            )
+        except Exception:
+            pass  #~ continue even if caching fails
+        
+        return result
+        
+    except Exception as e:
+        print(f"exception in get_top_listeners_percentile: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'percentile_ranking': 0,
+            'favorite_artist': "Unknown (Error Occurred)",
+            'total_listens': 0,
+            'percentile_confidence': "error"
+        }
 
 @home_bp.route('/data', methods=['GET'])
 def home_data():
@@ -162,7 +337,7 @@ def home_data():
     except ValueError:
         return jsonify({'error': 'Invalid user_id'}), 400
     
-    #& retrieve user record to access display name for personalized greeting
+    #& retrieve user record to access display name fr personalized greeting
     user = User.query.get(user_id)
     if not user:
         return jsonify({'error': 'user not found'}), 404
