@@ -13,6 +13,34 @@ const FavoriteGenresEvolution = ({ userId }) => {
   const [topGenres, setTopGenres] = useState([]); //~ new state to store union of top genres
   const svgRef = useRef();
   const tooltipRef = useRef();
+  
+  //& animation states & ref fr scroll detection
+  const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef(null);
+
+  //& handle visibility detection when scrolling
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        //& update visibility state based on intersection
+        setIsVisible(entries[0].isIntersecting);
+      },
+      { threshold: 0.2 } //~ higher threshold since taller component
+    );
+    
+    //& capture current ref value to avoid stale refs in cleanup
+    const currentRef = containerRef.current;
+    
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+    
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -233,8 +261,15 @@ const FavoriteGenresEvolution = ({ userId }) => {
   }, [data, topGenres]);
 
   return (
-    <div className="mt-4">
-      <div className="bg-gray-100/10 backdrop-blur-sm rounded-xl border border-gray-300/20 shadow-lg overflow-hidden p-4">
+    <div className="mt-4" ref={containerRef}>
+      <div 
+        className="bg-gray-100/10 backdrop-blur-sm rounded-xl border border-gray-300/20 shadow-lg overflow-hidden p-4"
+        style={{
+          opacity: isVisible ? 1 : 0,
+          transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
+          transition: 'opacity 0.8s ease, transform 0.8s ease',
+        }}
+      >
         <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
           <svg ref={svgRef} viewBox="0 0 900 400" preserveAspectRatio="xMidYMid meet"></svg>
         </div>
