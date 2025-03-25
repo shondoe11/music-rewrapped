@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../hooks/useAuth';
 import { getAllEvents, getSavedEvents, saveEvent, deleteEvent } from '../api';
 import Loader from '../styles/Loader';
+import analyticsService from '../services/analyticsService';
+import _ from 'lodash';
 
 const Events = () => {
   const { user } = useAuth();
@@ -13,6 +15,7 @@ const Events = () => {
   const [inputCode, setInputCode] = useState('SG');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
+  const [viewedEvents, setViewedEvents] = useState(new Set());
   
   //& loading states
   const [loadingRecommended, setLoadingRecommended] = useState(true);
@@ -193,6 +196,38 @@ const Events = () => {
     setCurrentPage(1);
   };
 
+  const trackEventView = async (eventId) => {
+    if (!eventId) return;
+    
+    try {
+      await analyticsService.trackEventView(eventId);
+    } catch (error) {
+      console.error('Failed to track event view:', error);
+    }
+  };
+
+  //& debounced tracking to prevent duplicate counts
+  const debouncedTrackView = useCallback(
+  _.debounce((eventId) => {
+    if (!viewedEvents.has(eventId)) {
+      try {
+        trackEventView(eventId);
+        setViewedEvents(prev => new Set([...prev, eventId]));
+      } catch (error) {
+        console.error('Failed to track event view:', error);
+      }
+    }
+  }, 500),
+  [viewedEvents]
+);
+
+//& reset viewed events when component unmounts / when events change
+useEffect(() => {
+  return () => {
+    setViewedEvents(new Set());
+  };
+}, [recommended]);
+
   return (
     <div className="p-4 bg-gray-900 text-white min-h-screen">
       <h1 className="text-4xl font-bold mb-6">Events</h1>
@@ -201,7 +236,7 @@ const Events = () => {
       <section className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div className="group relative inline-block">
-            <h2 className="text-4xl font-semibold">Recommended</h2>
+            <h2 className="text-2xl font-semibold">Recommended</h2>
             <span className="absolute left-0 -bottom-1 block h-0.5 bg-green-500 w-0 group-hover:w-full transition-all duration-300"></span>
           </div>
         </div>
@@ -214,17 +249,18 @@ const Events = () => {
             recommended.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {recommended.map(event => (
-                  <div key={event.id} className="border rounded p-4 bg-gray-800 shadow">
+                  <div key={`recommended-${event.id}`} className="border rounded p-4 bg-gray-800 shadow">
                     <a
                       href={event.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xl font-bold mb-2 block hover:text-green-500"
+                      onClick={() => debouncedTrackView(event.id)}
                     >
                       {event.title}
                     </a>
                     {getEventImage(event) && (
-                      <img src={getEventImage(event)} alt={event.title} className="mb-2 w-full h-auto rounded" />
+                      <img src={getEventImage(event)} alt={event.title} className="mb-2 w-full h-auto rounded" onClick={() => debouncedTrackView(event.id)} />
                     )}
                     <p className="mb-1">
                       <strong>Location:</strong> {event.location}
@@ -238,7 +274,10 @@ const Events = () => {
                       </p>
                     )}
                     <button
-                      onClick={() => handleSaveEvent(event)}
+                      onClick={() => {
+                        debouncedTrackView(event.id);
+                        handleSaveEvent(event);
+                      }}
                       className="mt-2 bg-green-500 hover:bg-green-600 px-3 py-1 rounded"
                     >
                       Save
@@ -259,7 +298,7 @@ const Events = () => {
       <section className="mb-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div className="group relative inline-block">
-            <h2 className="text-4xl font-semibold">Event Listings</h2>
+            <h2 className="text-2xl font-semibold">Event Listings</h2>
             <span className="absolute left-0 -bottom-1 block h-0.5 bg-green-500 w-0 group-hover:w-full transition-all duration-300"></span>
           </div>
           <div className="mb-4 flex items-center">
@@ -285,7 +324,7 @@ const Events = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {paginatedEvents.length > 0 ? (
               paginatedEvents.map(event => (
-                <div key={event.id} className="border rounded p-4 bg-gray-800 shadow">
+                <div key={`external-${event.id || event.name}`} className="border rounded p-4 bg-gray-800 shadow">
                   <a
                     href={event.url}
                     target="_blank"
@@ -363,7 +402,7 @@ const Events = () => {
               savedEvents.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {savedEvents.map(event => (
-                    <div key={event.id} className="border rounded p-4 bg-gray-800 shadow">
+                    <div key={`saved-${event.id}`} className="border rounded p-4 bg-gray-800 shadow">
                       <a
                         href={event.url}
                         target="_blank"
