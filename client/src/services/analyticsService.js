@@ -62,6 +62,26 @@ export const getArtistGenreMatrix = async (userId, timeRange = 'medium_term', li
     }
 };
 
+//& get longest listening streak data
+export const getLongestListeningStreak = async (userId) => {
+    try {
+        const response = await apiClient.get(`/analytics/user/listening-streak?user_id=${userId}`);
+        return response.data;
+    } catch (error) {
+        throw createContextualError(error, 'Failed to fetch listening streak data');
+    }
+};
+
+//& get top listeners percentile ranking
+export const getTopListenersPercentile = async (userId) => {
+    try {
+        const response = await apiClient.get(`/analytics/user/top-listeners-percentile?user_id=${userId}`);
+        return response.data;
+    } catch (error) {
+        throw createContextualError(error, 'Failed to fetch top listeners percentile data');
+    }
+};
+
 //& helper fr contextual err handling
 const createContextualError = (error, context) => {
     const enhancedError = new Error(`${context}: ${error.message}`);
@@ -78,5 +98,7 @@ export default {
     getListeningTrends,
     getListeningHeatmap,
     getGenreDistribution,
-    getArtistGenreMatrix
+    getArtistGenreMatrix,
+    getLongestListeningStreak,
+    getTopListenersPercentile
 };
