@@ -45,8 +45,6 @@ void main() {
 }
 `;
 
-//! webgl-based iridescent background that creates a dynamic, flowing gradient
-//! the effect responds to mouse movement when mouseReact is true
 export default function Iridescence({
   color = [1, 1, 1],
   speed = 1.0,
@@ -66,7 +64,6 @@ export default function Iridescence({
 
     let program;
 
-    //! handle canvas resize to match container and update shader resolution
     function resize() {
       const scale = 1;
       renderer.setSize(ctn.offsetWidth * scale, ctn.offsetHeight * scale);
@@ -104,34 +101,53 @@ export default function Iridescence({
     const mesh = new Mesh(gl, { geometry, program });
     let animateId;
 
-    //! animation loop that updates time uniform and renders the scene
     function update(t) {
       animateId = requestAnimationFrame(update);
       program.uniforms.uTime.value = t * 0.001;
+      
+      //! ensure mouse values are updated every frame for smoother effect
+      if (mouseReact) {
+        program.uniforms.uMouse.value[0] = mousePos.current.x;
+        program.uniforms.uMouse.value[1] = mousePos.current.y;
+      }
+      
       renderer.render({ scene: mesh });
     }
     animateId = requestAnimationFrame(update);
     ctn.appendChild(gl.canvas);
 
-    //! handle mouse movement to create interactive effect
     function handleMouseMove(e) {
       const rect = ctn.getBoundingClientRect();
       const x = (e.clientX - rect.left) / rect.width;
       const y = 1.0 - (e.clientY - rect.top) / rect.height;
       mousePos.current = { x, y };
-      program.uniforms.uMouse.value[0] = x;
-      program.uniforms.uMouse.value[1] = y;
     }
+    
+    function handleDocumentMouseMove(e) {
+      const rect = ctn.getBoundingClientRect();
+      if (
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+      ) {
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = 1.0 - (e.clientY - rect.top) / rect.height;
+        mousePos.current = { x, y };
+      }
+    }
+    
     if (mouseReact) {
       ctn.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mousemove", handleDocumentMouseMove);
     }
 
-    //! cleanup function to prevent memory leaks
     return () => {
       cancelAnimationFrame(animateId);
       window.removeEventListener("resize", resize);
       if (mouseReact) {
         ctn.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mousemove", handleDocumentMouseMove);
       }
       ctn.removeChild(gl.canvas);
       gl.getExtension("WEBGL_lose_context")?.loseContext();
@@ -143,6 +159,7 @@ export default function Iridescence({
     <div
       ref={ctnDom}
       className="w-full h-full"
+      style={{ pointerEvents: 'auto' }}
       {...rest}
     />
   );
