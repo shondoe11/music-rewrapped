@@ -8,6 +8,7 @@ import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
 import Events from './pages/Events';
 import PromoterPanel from './pages/PromoterPanel';
+import ReWrapped from './pages/ReWrapped';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path='/register' element={<Register />} />
         <Route path='/profile' element={<Profile />} />
         <Route path='/home' element={<Home />} />
+        <Route path="/rewrapped" element={<ReWrapped />} />
         <Route path='/events' element={<Events />} />
         <Route path="/promoter-panel" element={<PromoterPanel />} />
       </Routes>
