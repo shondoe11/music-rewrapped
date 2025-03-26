@@ -42,6 +42,9 @@ const Navbar = () => {
             <Link to="/home" className="hover:text-green-500">
               Home
             </Link>
+            <Link to="/rewrapped" className="hover:text-green-500">
+              Re-Wrapped
+            </Link>
             <Link to="/events" className="hover:text-green-500">
               Events
             </Link>
@@ -90,6 +93,9 @@ const Navbar = () => {
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             <Link to="/home" className="block px-3 py-2 rounded-md hover:bg-gray-700">
               Home
+            </Link>
+            <Link to="/rewrapped" className="block px-3 py-2 rounded-md hover:bg-gray-700">
+              Re-Wrapped
             </Link>
             <Link to="/events" className="block px-3 py-2 rounded-md hover:bg-gray-700">
               Events
