@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 load_dotenv()
 from server.extensions import db
-from server.model import User, UserPreference
+from server.model import User, UserPreference, ListeningHistory, SavedEvent, Event, AggregatedStats
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
 
@@ -331,7 +331,7 @@ def rewrapped_login():
         'id': user.id,
         'spotify_id': user.spotify_id,
         'email': user.email,
-        'display_name': user.display_name,  # always use Spotify display name
+        'display_name': user.display_name,  #~ always use Spotify display name
         'role': user.role,
         'username': user.username
     }
@@ -342,7 +342,7 @@ def rewrapped_login():
         'role': user.role
     }}), 200
 
-#& Profile: change pw
+#& profile: change pw
 @auth_bp.route('/change-password', methods=['POST', 'OPTIONS'])
 def change_password():
     if request.method == 'OPTIONS':
@@ -404,7 +404,82 @@ def set_preferences():
     db.session.commit()
     return jsonify({'message': 'Preferences saved successfully'}), 200
 
-#& clear the session to log out user from OAuth session
+#& del acc
+@auth_bp.route('/delete-account', methods=['POST'])
+def delete_account():
+    """
+    Deletes user's listening history and resets account to guest status.
+    
+    Request body:
+    {
+        "user_id": user_id,
+        "password": current_password
+    }
+    """
+    data = request.get_json()
+    user_id = data.get('user_id')
+    password = data.get('password')
+    
+    if not user_id or not password:
+        return jsonify({'error': 'Missing required fields'}), 400
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    #~ verify pw
+    if not user.check_password(password):
+        return jsonify({'error': 'Incorrect password'}), 401
+    
+    try:
+        #~ 1. delete listening history
+        ListeningHistory.query.filter_by(user_id=user_id).delete()
+        
+        #~ 2. delete aggregated stats
+        AggregatedStats.query.filter_by(user_id=user_id).delete()
+        
+        #~ 3. delete saved events
+        SavedEvent.query.filter_by(user_id=user_id).delete()
+        
+        #~ 4. delete user prefs
+        UserPreference.query.filter_by(user_id=user_id).delete()
+        
+        #~ 5. handle events created by user (if promoter)
+        if user.role == 'promoter':
+            Event.query.filter_by(promoter_id=user_id).delete()
+        
+        #~ 6. reset user to guest status but keep Spotify connection
+        user.role = 'guest'
+        user.username = None
+        user.password_hash = None
+        user.store_listening_history = False
+        
+        #~ 7. commit all changes
+        db.session.commit()
+        
+        #~ 8. update session
+        if 'user' in session:
+            session['user'] = {
+                'id': user.id,
+                'spotify_id': user.spotify_id,
+                'email': user.email,
+                'display_name': user.display_name,
+                'role': 'guest',
+                'username': None,
+                'profile_image_url': user.profile_image_url,
+                'country': user.country,
+                'followers': user.followers
+            }
+        
+        return jsonify({
+            'message': 'Account reset successfully. Your listening history has been deleted, and your account has been reset to guest status.'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error during account deletion: {str(e)}")
+        return jsonify({'error': 'An error occurred during account deletion'}), 500
+
+#& clear sesh to log out user frm OAuth session
 @auth_bp.route('/logout', methods=['POST'])
 def logout_route():
     session.clear()
