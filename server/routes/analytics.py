@@ -6,6 +6,9 @@ from server.services.analytics_service import (
     get_artist_genre_matrix
 )
 from server.routes.home import get_longest_listening_streak, get_top_listeners_percentile
+from server.extensions import db
+from server.model import ListeningHistory
+from sqlalchemy import func
 
 analytics_bp = Blueprint('analytics', __name__)
 
@@ -172,3 +175,40 @@ def top_listeners_percentile_endpoint():
         print(f"error fetching top listeners percentile data: {str(e)}")
         print(traceback.format_exc())
         return jsonify({'error': 'failed to fetch top listeners percentile data'}), 500
+    
+@analytics_bp.route('/user/earliest-listening-date', methods=['GET'])
+def earliest_listening_date_endpoint():
+    """
+    Get the earliest date from user's listening history.
+    Query params:
+        user_id: User ID
+    """
+    user_id = request.args.get('user_id')
+    
+    if not user_id:
+        return jsonify({'error': 'user_id is required'}), 400
+        
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        return jsonify({'error': 'Invalid user_id format'}), 400
+    
+    try:
+        #~ earliest played_at date query
+        earliest_record = db.session.query(
+            func.min(ListeningHistory.played_at)
+        ).filter(
+            ListeningHistory.user_id == user_id
+        ).scalar()
+        
+        if earliest_record:
+            return jsonify({
+                'earliest_date': earliest_record.isoformat()
+            })
+        else:
+            return jsonify({
+                'earliest_date': None
+            })
+    except Exception as e:
+        print(f"Error fetching earliest listening date: {str(e)}")
+        return jsonify({'error': 'Failed to fetch earliest listening date'}), 500
