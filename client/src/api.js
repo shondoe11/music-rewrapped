@@ -75,9 +75,19 @@ export async function listEvents() {
     }
 }
 
+//& get earliest listening date fr user
+export async function getEarliestListeningDate(userId) {
+    try {
+        const response = await apiClient.get(`/analytics/user/earliest-listening-date?user_id=${userId}`);
+        return response.data;
+    } catch (error) {
+        throw createContextualError(error, 'Failed to fetch earliest listening date');
+    }
+}
+
 //* Auth API 
 
-//& get current user data frm session
+//& get current user data frm sesh
 export async function getCurrentUser() {
     try {
         const response = await apiClient.get('/auth/user');
@@ -107,7 +117,7 @@ export async function login(username, password) {
     }
 }
 
-//& register new rewrapped accnt
+//& register new rewrapped acc
 export async function register(userData) {
     try {
         const response = await apiClient.post('/auth/rewrapped/register', userData);
@@ -171,6 +181,23 @@ export async function updateUserPreferences(userId, preferences) {
         return response.data;
     } catch (error) {
         throw createContextualError(error, 'Failed to update user preferences');
+    }
+}
+
+//& delete user account
+export async function deleteAccount(userId, password) {
+    try {
+        const response = await apiClient.post('/auth/delete-account', {
+            user_id: userId,
+            password: password
+        });
+        return response.data;
+    } catch (error) {
+        //~ special handling fr password validation errs
+        if (error.status === 401) {
+            throw createContextualError(error, 'Incorrect password');
+        }
+        throw createContextualError(error, 'Failed to delete account');
     }
 }
 
