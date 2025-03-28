@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import PropTypes from 'prop-types';
 import Loader from '../../styles/Loader';
 import { getListeningHeatmap } from '../../services/analyticsService';
+import { motion } from 'framer-motion';
 
 const ListeningHeatmap = ({ userId }) => {
     const [data, setData] = useState(null);
@@ -43,7 +44,7 @@ const ListeningHeatmap = ({ userId }) => {
         //~ clear prev chart
         d3.select(svgRef.current).selectAll("*").remove();
         
-        //~ set up dimensions & margins
+        //~ set dimensions & margins
         const margin = { top: 40, right: 40, bottom: 50, left: 100 };
         const width = 900 - margin.left - margin.right;
         const height = 440 - margin.top - margin.bottom;
@@ -57,10 +58,17 @@ const ListeningHeatmap = ({ userId }) => {
             .append("g")
             .attr("transform", `translate(${margin.left}, ${margin.top})`);
         
-        //~ color scale
+        //~ custom color scale
         const colorScale = d3.scaleSequential()
             .domain([0, data.maxValue])
-            .interpolator(d3.interpolateViridis);
+            .interpolator(d => {
+                const t = d;
+                if (t < 0.5) {
+                    return d3.interpolateRgb("#1A365D", "#10B981")(t * 2);
+                } else {
+                    return d3.interpolateRgb("#10B981", "#8B5CF6")((t - 0.5) * 2);
+                }
+            });
 
         //~ add day labels (y-axis)
         svg.selectAll(".day-label")
@@ -114,36 +122,61 @@ const ListeningHeatmap = ({ userId }) => {
             .attr("y", d => d.day * cellHeight)
             .attr("width", cellWidth - 1)
             .attr("height", cellHeight - 1)
-            .attr("rx", 2) //~ rounded corners
-            .attr("ry", 2)
-            .attr("fill", d => d.value > 0 ? colorScale(d.value) : "#2d3748")
-            .attr("stroke", "#1a202c")
+            .attr("rx", 3) //~ more rounded corners
+            .attr("ry", 3)
+            .attr("fill", d => d.value > 0 ? colorScale(d.value) : "#1e293b")
+            .attr("stroke", "#0f172a")
             .attr("stroke-width", 1)
-            .on("mouseover", function(event, d) {
-                //~ show tooltip
-                d3.select(tooltipRef.current)
-                    .style("display", "block")
-                    .style("left", (event.pageX - 100) + "px")
-                    .style("top", (event.pageY - 1100) + "px")
-                    .html(`
-                        <div><strong>${days[d.day]}, ${hours[d.hour]}</strong></div>
-                        <div>${d.value} track${d.value === 1 ? '' : 's'} played</div>
-                    `);
-                    
-                //~ highlight cell
+            .attr("opacity", 0) 
+            .transition() 
+            .duration(50)
+            .delay((d, i) => i * 2)
+            .attr("opacity", 1)
+            .on("end", function() {
                 d3.select(this)
-                    .attr("stroke", "white")
-                    .attr("stroke-width", 2);
-            })
-            .on("mouseout", function() {
-                //~ hide tooltip
-                d3.select(tooltipRef.current)
-                    .style("display", "none");
-                    
-                //~ restore cell
-                d3.select(this)
-                    .attr("stroke", "#1a202c")
-                    .attr("stroke-width", 1);
+                    .on("mouseover", function(event, d) {
+                        const chartRect = svgRef.current.getBoundingClientRect();
+                        const tooltipWidth = 150; 
+                        const tooltipHeight = 70;
+                        
+                        let xPosition = event.clientX - chartRect.left;
+                        let yPosition = event.clientY - chartRect.top - tooltipHeight - 10;
+                        
+                        xPosition = Math.max(0, Math.min(xPosition, chartRect.width - tooltipWidth));
+                        yPosition = Math.max(10, yPosition);
+                        
+                        //~ show tooltip
+                        d3.select(tooltipRef.current)
+                            .style("display", "block")
+                            .style("left", `${xPosition}px`)
+                            .style("top", `${yPosition}px`)
+                            .html(`
+                                <div class="font-medium text-gray-200">${days[d.day]}, ${hours[d.hour]}</div>
+                                <div class="text-sm mt-1">${d.value} track${d.value === 1 ? '' : 's'} played</div>
+                                ${d.value > 0 ? `<div class="text-xs mt-1 text-gray-400">${Math.round(d.value / data.maxValue * 100)}% of peak</div>` : ''}
+                            `);
+                        
+                        //~ highlight cell with transition
+                        d3.select(this)
+                            .transition()
+                            .duration(150)
+                            .attr("stroke", "white")
+                            .attr("stroke-width", 2)
+                            .attr("filter", "brightness(1.2)");
+                    })
+                    .on("mouseout", function() {
+                        //~ hide tooltip
+                        d3.select(tooltipRef.current)
+                            .style("display", "none");
+                        
+                        //~ restore cell with transition
+                        d3.select(this)
+                            .transition()
+                            .duration(150)
+                            .attr("stroke", "#0f172a")
+                            .attr("stroke-width", 1)
+                            .attr("filter", null);
+                    });
             });
 
         //& add legend
@@ -177,6 +210,8 @@ const ListeningHeatmap = ({ userId }) => {
             .attr("y", legendY)
             .attr("width", legendWidth)
             .attr("height", legendHeight)
+            .attr("rx", 3)
+            .attr("ry", 3)
             .style("fill", "url(#legend-gradient)");
 
         //& add legend labels
@@ -206,59 +241,102 @@ const ListeningHeatmap = ({ userId }) => {
         }, [data, loading]);
 
         if (loading) {
-            return <div className="flex justify-center items-center h-64"><Loader /></div>;
+            return (
+                <motion.div 
+                    className="flex justify-center items-center h-64"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    <Loader />
+                </motion.div>
+            );
         }
 
         if (error) {
             return (
-                <div className="p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-center">
-                    <p className="text-red-500">{error}</p>
+                <motion.div 
+                    className="p-6 bg-red-900/20 border border-red-500/50 rounded-xl backdrop-blur-sm text-center"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    <p className="text-red-400 font-medium text-lg">{error}</p>
                     <p className="text-gray-400 mt-2">Please try refreshing the page.</p>
-                </div>
+                </motion.div>
             );
         }
 
         return (
-            <div className="bg-gray-800 p-4 rounded-lg shadow mb-8">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold">Listening Activity Heatmap</h3>
+            <motion.div 
+                className="bg-gray-800/40 backdrop-blur-xl p-6 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-blue-500/5 transition-all duration-300"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+            >
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
+                    <motion.h3 
+                        className="text-xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                    >
+                        Listening Activity Heatmap
+                    </motion.h3>
                     
-                    <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-400">Time period:</span>
-                        <select
-                            value={days}
-                            onChange={(e) => setDays(Number(e.target.value))}
-                            className="bg-gray-700 text-white border border-gray-600 rounded py-1 px-2 text-sm"
-                        >
-                            <option value="30">Last 30 days</option>
-                            <option value="90">Last 90 days</option>
-                            <option value="180">Last 6 months</option>
-                            <option value="365">Last year</option>
-                        </select>
-                    </div>
+                    <motion.div 
+                        className="flex items-center space-x-3"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5, delay: 0.3 }}
+                    >
+                        <span className="text-sm text-gray-300">Time period:</span>
+                        <div className="relative">
+                            <select
+                                value={days}
+                                onChange={(e) => setDays(Number(e.target.value))}
+                                className="bg-gray-900/70 text-white border border-gray-700/50 rounded-lg py-1.5 px-4 pr-8 text-sm appearance-none shadow-sm hover:border-blue-500/50 focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/50 focus:outline-none transition-all duration-200"
+                            >
+                                <option value="30">Last 30 days</option>
+                                <option value="90">Last 90 days</option>
+                                <option value="180">Last 6 months</option>
+                                <option value="365">Last year</option>
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                    </motion.div>
                 </div>
                 
-                <div className="relative">
-                    <svg ref={svgRef} width="100%" height="440"></svg>
+                <div className="relative overflow-hidden">
+                    <svg ref={svgRef} width="100%" height="440" className="overflow-visible"></svg>
                     <div
                         ref={tooltipRef}
-                        className="absolute bg-gray-900 text-white p-2 rounded shadow-lg pointer-events-none hidden"
-                        style={{ display: 'none' }}
+                        className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"
+                        style={{ display: 'none', position: 'absolute' }}
                     ></div>
                 </div>
                 
-                <div className="mt-4 text-sm text-gray-400">
+                <div className="mt-6 text-sm text-gray-400 border-t border-gray-700/30 pt-4">
                     <p>
                         This heatmap shows when you're most active on Spotify throughout the week. 
-                        Darker colors indicate more tracks played during that hour of the day.
+                        Brighter colors indicate more tracks played during that hour of the day.
                     </p>
                     {data && data.data.every(row => row.every(cell => cell === 0)) && (
-                        <p className="mt-2 text-yellow-500">
-                            No listening data available for this time period. Continue using Spotify with Re-Wrapped to see your activity patterns!
-                        </p>
+                        <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg">
+                            <p className="text-yellow-500 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                                No listening data available for this time period. Continue using Spotify with Re-Wrapped to see your activity patterns!
+                            </p>
+                        </div>
                     )}
                 </div>
-            </div>
+            </motion.div>
         );
 };
 
