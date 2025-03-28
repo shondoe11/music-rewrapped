@@ -3,13 +3,16 @@ import PropTypes from 'prop-types';
 import * as d3 from 'd3';
 import Loader from '../../styles/Loader';
 import { getLongestListeningStreak } from '../../services/analyticsService';
+import { motion } from 'framer-motion';
 
 const ListeningStreakSummary = ({ userId }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [hoveredMonth, setHoveredMonth] = useState(null);
     
     const svgRef = useRef();
+    const tooltipRef = useRef();
     
     useEffect(() => {
         const fetchData = async () => {
@@ -50,6 +53,14 @@ const ListeningStreakSummary = ({ userId }) => {
             .attr("height", "100%")
             .append("g")
             .attr("transform", `translate(${width / 2}, ${height / 2})`);
+            
+        //~ subtle bg
+        svg.append("circle")
+            .attr("cx", 0)
+            .attr("cy", 0)
+            .attr("r", outerRadius + 20)
+            .attr("fill", "url(#radialBackgroundGradient)")
+            .attr("opacity", 0.1);
             
         //~ process data
         const monthsData = [];
@@ -103,7 +114,82 @@ const ListeningStreakSummary = ({ userId }) => {
             .domain([0, maxHours])
             .range([innerRadius, outerRadius]);
             
-        //~ add x axis (circles)
+        //~ define gradients
+        const defs = svg.append("defs");
+        
+        //~ bg gradient
+        const backgroundGradient = defs.append("radialGradient")
+            .attr("id", "radialBackgroundGradient")
+            .attr("cx", "50%")
+            .attr("cy", "50%")
+            .attr("r", "50%");
+            
+        backgroundGradient.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", "#4ADE80")
+            .attr("stop-opacity", 0.1);
+            
+        backgroundGradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", "#3B82F6")
+            .attr("stop-opacity", 0.05);
+            
+        //~ area fill gradient
+        const fillGradient = defs.append("radialGradient")
+            .attr("id", "radialFillGradient")
+            .attr("cx", 0)
+            .attr("cy", 0)
+            .attr("r", outerRadius)
+            .attr("gradientUnits", "userSpaceOnUse");
+            
+        fillGradient.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", "#4ADE80")
+            .attr("stop-opacity", 0.9);
+            
+        fillGradient.append("stop")
+            .attr("offset", "50%")
+            .attr("stop-color", "#22C55E")
+            .attr("stop-opacity", 0.6);
+            
+        fillGradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", "#16A34A")
+            .attr("stop-opacity", 0.2);
+            
+        //~ center gradient
+        const centerGradient = defs.append("radialGradient")
+            .attr("id", "centerGradient")
+            .attr("cx", "50%")
+            .attr("cy", "50%")
+            .attr("r", "50%");
+            
+        centerGradient.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", "#4ADE80");
+            
+        centerGradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", "#22C55E");
+            
+        //~ glow filter fr highlighted elements
+        const filter = defs.append("filter")
+            .attr("id", "glow")
+            .attr("x", "-50%")
+            .attr("y", "-50%")
+            .attr("width", "200%")
+            .attr("height", "200%");
+            
+        filter.append("feGaussianBlur")
+            .attr("stdDeviation", "3")
+            .attr("result", "blur");
+            
+        filter.append("feComposite")
+            .attr("in", "SourceGraphic")
+            .attr("in2", "blur")
+            .attr("operator", "over");
+            
+        //~ x axis (circles) w smoother appearance
         const xAxisTicks = [maxHours * 0.25, maxHours * 0.5, maxHours * 0.75, maxHours];
         
         svg.selectAll(".circle-axis")
@@ -115,23 +201,33 @@ const ListeningStreakSummary = ({ userId }) => {
             .attr("r", d => radiusScale(d))
             .attr("fill", "none")
             .attr("stroke", "#374151")
-            .attr("stroke-dasharray", "2,2")
-            .attr("stroke-width", 1);
+            .attr("stroke-dasharray", "3,3")
+            .attr("stroke-width", 0.8)
+            .attr("opacity", 0)
+            .transition()
+            .duration(1000)
+            .delay((d, i) => i * 200)
+            .attr("opacity", 0.6);
             
-        //~ add x axis labels
+        //~ x axis labels w better positioning & styling
         svg.selectAll(".circle-axis-label")
             .data(xAxisTicks)
             .join("text")
             .attr("class", "circle-axis-label")
-            .attr("x", 0)
+            .attr("x", 5)
             .attr("y", d => -radiusScale(d))
-            .attr("dy", -5)
-            .attr("text-anchor", "middle")
+            .attr("dy", 3)
+            .attr("text-anchor", "start")
             .attr("fill", "#9CA3AF")
-            .attr("font-size", "10px")
+            .attr("font-size", "11px")
+            .attr("opacity", 0)
+            .transition()
+            .duration(1000)
+            .delay((d, i) => 800 + i * 200)
+            .attr("opacity", 1)
             .text(d => `${Math.round(d)} hrs`);
             
-        //~ add y axis (months)
+        //~ y axis (months) w improved styling
         svg.selectAll(".month-line")
             .data(monthsData)
             .join("line")
@@ -141,10 +237,14 @@ const ListeningStreakSummary = ({ userId }) => {
             .attr("x2", (d, i) => Math.cos(angleScale(i) - Math.PI / 2) * outerRadius)
             .attr("y2", (d, i) => Math.sin(angleScale(i) - Math.PI / 2) * outerRadius)
             .attr("stroke", "#374151")
-            .attr("stroke-width", 1)
-            .attr("opacity", 0.5);
+            .attr("stroke-width", 0.8)
+            .attr("opacity", 0)
+            .transition()
+            .duration(1000)
+            .delay((d, i) => i * 100)
+            .attr("opacity", 0.4);
             
-        //~ add month labels
+        //~ month labels w better styling
         svg.selectAll(".month-label")
             .data(monthsData)
             .join("text")
@@ -152,33 +252,17 @@ const ListeningStreakSummary = ({ userId }) => {
             .attr("x", (d, i) => Math.cos(angleScale(i) - Math.PI / 2) * (outerRadius + 20))
             .attr("y", (d, i) => Math.sin(angleScale(i) - Math.PI / 2) * (outerRadius + 20))
             .attr("text-anchor", "middle")
-            .attr("fill", "#D1D5DB")
             .attr("font-size", "12px")
+            .attr("fill", d => d.hours > 0 ? "#D1D5DB" : "#9CA3AF") 
+            .attr("font-weight", d => d.hours > 0 ? "500" : "400")
+            .attr("opacity", 0)
+            .transition()
+            .duration(800)
+            .delay((d, i) => 1000 + i * 100)
+            .attr("opacity", 1)
             .text(d => d.month);
         
-        //~ gradient
-        const gradient = svg.append("defs")
-            .append("radialGradient")
-            .attr("id", "radialGradient")
-            .attr("gradientUnits", "userSpaceOnUse")
-            .attr("cx", 0)
-            .attr("cy", 0)
-            .attr("r", outerRadius);
-            
-        gradient.append("stop")
-            .attr("offset", "0%")
-            .attr("stop-color", "#4ADE80")
-            .attr("stop-opacity", 0.7);
-            
-        gradient.append("stop")
-            .attr("offset", "100%")
-            .attr("stop-color", "#4ADE80")
-            .attr("stop-opacity", 0.1);
-            
-        //~ create custom path fr filled area
-        let pathData = "";
-        
-        //~ first draw line to inner radius at starting point
+        //~ create custom path fr filled area w animation
         let hasData = false;
         let startIndex = -1;
         
@@ -192,102 +276,224 @@ const ListeningStreakSummary = ({ userId }) => {
         }
         
         if (hasData) {
-            //& start @ center
-            pathData = "M 0,0 ";
+            //~ create custom path fr filled area
+            let pathData = "";
+            const activeMonths = monthsData.filter(d => d.hours > 0);
             
-            //& draw line to first data point
-            const startAngle = angleScale(startIndex) - Math.PI / 2;
-            const startX = Math.cos(startAngle) * radiusScale(monthsData[startIndex].hours);
-            const startY = Math.sin(startAngle) * radiusScale(monthsData[startIndex].hours);
-            
-            pathData += `L ${startX},${startY} `;
-            
-            //& add only months w data to path
-            for (let i = 0; i < monthsData.length; i++) {
-                if (monthsData[i].hours > 0) {
-                    const angle = angleScale(i) - Math.PI / 2;
-                    const x = Math.cos(angle) * radiusScale(monthsData[i].hours);
-                    const y = Math.sin(angle) * radiusScale(monthsData[i].hours);
+            if (activeMonths.length > 0) {
+                //& start at center
+                pathData = "M 0,0 ";
+                
+                //& draw line to first month w data
+                const firstMonth = activeMonths[0];
+                const firstMonthIndex = monthsData.indexOf(firstMonth);
+                const firstAngle = angleScale(firstMonthIndex) - Math.PI / 2;
+                const firstX = Math.cos(firstAngle) * radiusScale(firstMonth.hours);
+                const firstY = Math.sin(firstAngle) * radiusScale(firstMonth.hours);
+                
+                pathData += `L ${firstX},${firstY} `;
+                
+                //& ONLY months w data to path
+                activeMonths.forEach(month => {
+                    const monthIndex = monthsData.indexOf(month);
+                    const angle = angleScale(monthIndex) - Math.PI / 2;
+                    const x = Math.cos(angle) * radiusScale(month.hours);
+                    const y = Math.sin(angle) * radiusScale(month.hours);
                     
                     pathData += `L ${x},${y} `;
-                }
+                });
+                
+                //~ close path back to center
+                pathData += "Z";
+                
+                //~ draw custom path
+                svg.append("path")
+                    .attr("d", pathData)
+                    .attr("fill", "url(#radialFillGradient)")
+                    .attr("stroke", "#4ADE80")
+                    .attr("stroke-width", 1.5)
+                    .attr("opacity", 0) 
+                    .transition()
+                    .duration(1500)
+                    .attr("opacity", 0.85); 
             }
-            
-            //~ close path back to center
-            pathData += "Z";
-            
-            //~ draw custom path
-            svg.append("path")
-                .attr("d", pathData)
-                .attr("fill", "url(#radialGradient)")
-                .attr("stroke", "#4ADE80")
-                .attr("stroke-width", 2)
-                .attr("opacity", 0.6);
         } else {
-            //~ fallback if no data - create small circle in center
+            //~ fallback if no data - create small circle in center w animation
             svg.append("circle")
                 .attr("cx", 0)
                 .attr("cy", 0)
-                .attr("r", innerRadius + 10)
-                .attr("fill", "url(#radialGradient)")
-                .attr("opacity", 0.6);
+                .attr("r", innerRadius)
+                .attr("fill", "url(#centerGradient)")
+                .attr("opacity", 0) 
+                .transition()
+                .duration(1000)
+                .attr("opacity", 0.7);
         }
+        
+        //~ center circle
+        svg.append("circle")
+            .attr("cx", 0)
+            .attr("cy", 0)
+            .attr("r", innerRadius)
+            .attr("fill", "url(#centerGradient)")
+            .attr("opacity", 0.6)
+            .attr("stroke", "#22C55E")
+            .attr("stroke-width", 1);
             
-        //& highlight months w actual data
-        monthsData.forEach((d, i) => {
-            if (d.hours > 0) {
-                //~ add highlight to month w data
-                svg.append("circle")
-                    .attr("cx", Math.cos(angleScale(i) - Math.PI / 2) * radiusScale(d.hours))
-                    .attr("cy", Math.sin(angleScale(i) - Math.PI / 2) * radiusScale(d.hours))
-                    .attr("r", 8)
-                    .attr("fill", "rgba(74, 222, 128, 0.2)")
-                    .attr("stroke", "#4ADE80")
-                    .attr("stroke-width", 1);
-            }
-        });
-            
-        //~ dots - only show dots fr months w data
-        svg.selectAll(".dot")
-            .data(monthsData)  //~ use all months data
-            .join("circle")
-            .attr("class", "dot")
-            .attr("cx", (d, i) => Math.cos(angleScale(i) - Math.PI / 2) * (d.hours > 0 ? radiusScale(d.hours) : innerRadius))
-            .attr("cy", (d, i) => Math.sin(angleScale(i) - Math.PI / 2) * (d.hours > 0 ? radiusScale(d.hours) : innerRadius))
-            .attr("r", d => d.hours > 0 ? 5 : 3)  //~ smaller dots fr months w no data
-            .attr("fill", d => d.hours > 0 ? "#4ADE80" : "#555555")  //~ diff color fr months w no data
-            .attr("stroke", "#FFF")
-            .attr("stroke-width", d => d.hours > 0 ? 1.5 : 0.5)  //~ thinner stroke fr months w no data
-            .append("title")
-            .text(d => `${d.month}: ${Math.round(d.hours)} hours`);
-            
-        //~ center text
-        svg.append("text")
+        //~ center text w better styling
+        const centerText = svg.append("text")
             .attr("text-anchor", "middle")
-            .attr("dy", "-0.5em")
-            .attr("fill", "#FFF")
-            .attr("font-size", "16px")
+            .attr("fill", "#FFFFFF");
+            
+        centerText.append("tspan")
+            .attr("x", 0)
+            .attr("dy", "-0.6em")
+            .attr("font-size", "18px")
+            .attr("font-weight", "medium")
             .text("Hours");
             
-        svg.append("text")
-            .attr("text-anchor", "middle")
-            .attr("dy", "0.5em")
-            .attr("fill", "#FFF")
-            .attr("font-size", "16px")
+        centerText.append("tspan")
+            .attr("x", 0)
+            .attr("dy", "1.4em")
+            .attr("font-size", "18px")
+            .attr("font-weight", "medium")
             .text("Listened");
+            
+        //& enhanced dots fr each month w interactive features
+        const dots = svg.selectAll(".month-dot")
+            .data(monthsData)
+            .join("g")
+            .attr("class", "month-dot")
+            .attr("transform", (d, i) => {
+                const angle = angleScale(i) - Math.PI / 2;
+                const r = d.hours > 0 ? radiusScale(d.hours) : innerRadius;
+                const x = Math.cos(angle) * r;
+                const y = Math.sin(angle) * r;
+                return `translate(${x}, ${y})`;
+            })
+            .style("cursor", "pointer")
+            .on("mouseover", function(event, d, i) {
+                if (d.hours <= 0) return;
+                
+                d3.select(this).select("circle.dot-highlight")
+                    .transition()
+                    .duration(200)
+                    .attr("r", 15)
+                    .attr("opacity", 0.5);
+                    
+                d3.select(this).select("circle.dot-outer")
+                    .transition()
+                    .duration(200)
+                    .attr("r", 12)
+                    .attr("stroke-width", 2)
+                    .attr("filter", "url(#glow)");
+                    
+                d3.select(this).select("circle.dot-inner")
+                    .transition()
+                    .duration(200)
+                    .attr("r", 5);
+                    
+                const chartRect = svgRef.current.getBoundingClientRect();
+                const tooltipWidth = 200;
+                const tooltipHeight = 80;
+                
+                const angle = angleScale(monthsData.indexOf(d)) - Math.PI / 2;
+                const r = radiusScale(d.hours);
+                const x = Math.cos(angle) * r;
+                const y = Math.sin(angle) * r;
+                
+                const tooltipX = chartRect.width / 2 + x;
+                const tooltipY = chartRect.height / 2 + y;
+                
+                const tooltip = d3.select(tooltipRef.current);
+                tooltip.style("display", "block")
+                    .style("left", `${tooltipX}px`)
+                    .style("top", `${tooltipY - 15}px`)
+                    .html(`
+                        <div class="font-medium text-green-400">${d.month} ${referenceYear}</div>
+                        <div class="text-white text-lg font-semibold">${Math.round(d.hours)} listening hours</div>
+                        <div class="text-gray-300 text-sm">~${Math.round(d.hours * 60 / 3.5)} tracks</div>
+                    `);
+                    
+                setHoveredMonth(d.month);
+            })
+            .on("mouseout", function() {
+                d3.select(this).select("circle.dot-highlight")
+                    .transition()
+                    .duration(200)
+                    .attr("r", 10)
+                    .attr("opacity", 0.2);
+                    
+                d3.select(this).select("circle.dot-outer")
+                    .transition()
+                    .duration(200)
+                    .attr("r", 8)
+                    .attr("stroke-width", 1.5)
+                    .attr("filter", "none");
+                    
+                d3.select(this).select("circle.dot-inner")
+                    .transition()
+                    .duration(200)
+                    .attr("r", 3);
+                    
+                d3.select(tooltipRef.current)
+                    .style("display", "none");
+                    
+                setHoveredMonth(null);
+            });
+            
+        dots.append("circle")
+            .attr("class", "dot-highlight")
+            .attr("r", 10)
+            .attr("fill", d => d.hours > 0 ? "#4ADE80" : "transparent")
+            .attr("opacity", 0.2);
+            
+        dots.append("circle")
+            .attr("class", "dot-outer")
+            .attr("r", d => d.hours > 0 ? 8 : 4)
+            .attr("fill", "transparent")
+            .attr("stroke", d => d.hours > 0 ? "#4ADE80" : "#6B7280")
+            .attr("stroke-width", d => d.hours > 0 ? 1.5 : 0.5)
+            .attr("opacity", d => d.hours > 0 ? 1 : 0.5);
+            
+        dots.append("circle")
+            .attr("class", "dot-inner")
+            .attr("r", d => d.hours > 0 ? 3 : 2)
+            .attr("fill", d => d.hours > 0 ? "#4ADE80" : "#6B7280")
+            .attr("opacity", d => d.hours > 0 ? 1 : 0.5);
+            
+        dots.attr("opacity", 0)
+            .transition()
+            .duration(500)
+            .delay((d, i) => 1500 + i * 50)
+            .attr("opacity", 1);
             
     }, [data, loading]);
     
     if (loading) {
-        return <div className="flex justify-center items-center h-64"><Loader /></div>;
+        return (
+            <motion.div 
+                className="flex justify-center items-center h-64"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+            >
+                <Loader />
+            </motion.div>
+        );
     }
     
     if (error) {
         return (
-            <div className="p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-center">
-                <p className="text-red-500">{error}</p>
+            <motion.div 
+                className="p-6 bg-red-900/20 border border-red-500/50 rounded-xl backdrop-blur-sm text-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+            >
+                <p className="text-red-400 font-medium text-lg">{error}</p>
                 <p className="text-gray-400 mt-2">Please try refreshing the page.</p>
-            </div>
+            </motion.div>
         );
     }
     
@@ -312,42 +518,101 @@ const ListeningStreakSummary = ({ userId }) => {
         });
     };
     
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+    
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+    };
+    
     return (
-        <div className="bg-gray-800 p-4 rounded-lg shadow mb-8">
+        <motion.div 
+            className="bg-gray-800/40 backdrop-blur-xl p-6 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-green-500/5 transition-all duration-300"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+        >
             <div className="flex flex-col md:flex-row items-start justify-between mb-6">
-                <h3 className="text-xl font-semibold mb-4 md:mb-0">Listening Streak Summary</h3>
+                <motion.h3 
+                    className="text-xl font-semibold mb-4 md:mb-0 bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                    Your Listening Journey
+                </motion.h3>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gray-700 p-4 rounded-lg border border-gray-600 text-center">
-                    <div className="text-sm text-gray-400 mb-1">Total Listening Time</div>
-                    <div className="text-3xl font-bold text-green-500">{formatTime(data.total_minutes)}</div>
-                </div>
+            <motion.div 
+                className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8"
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
+            >
+                <motion.div 
+                    className="bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700/50 text-center shadow-lg transform transition-all duration-300 hover:shadow-green-500/10 hover:-translate-y-1"
+                    variants={itemVariants}
+                >
+                    <div className="text-sm text-gray-300 mb-2">Total Listening Time</div>
+                    <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-green-500">
+                        {formatTime(data.total_minutes)}
+                    </div>
+                </motion.div>
                 
-                <div className="bg-gray-700 p-4 rounded-lg border border-gray-600 text-center">
-                    <div className="text-sm text-gray-400 mb-1">Total Tracks Played</div>
-                    <div className="text-3xl font-bold text-green-500">{data.total_tracks.toLocaleString()}</div>
-                </div>
+                <motion.div 
+                    className="bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700/50 text-center shadow-lg transform transition-all duration-300 hover:shadow-blue-500/10 hover:-translate-y-1"
+                    variants={itemVariants}
+                >
+                    <div className="text-sm text-gray-300 mb-2">Total Tracks Played</div>
+                    <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-500">
+                        {data.total_tracks.toLocaleString()}
+                    </div>
+                </motion.div>
                 
-                <div className="bg-gray-700 p-4 rounded-lg border border-gray-600 text-center">
-                    <div className="text-sm text-gray-400 mb-1">Biggest Listening Day</div>
-                    <div className="text-3xl font-bold text-green-500">{formatDate(data.biggest_listening_day)}</div>
-                </div>
-            </div>
+                <motion.div 
+                    className="bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700/50 text-center shadow-lg transform transition-all duration-300 hover:shadow-purple-500/10 hover:-translate-y-1"
+                    variants={itemVariants}
+                >
+                    <div className="text-sm text-gray-300 mb-2">Biggest Listening Day</div>
+                    <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+                        {formatDate(data.biggest_listening_day)}
+                    </div>
+                </motion.div>
+            </motion.div>
             
-            <div className="mt-6">
-                <h4 className="text-lg font-medium mb-4 text-center">Monthly Listening Hours</h4>
+            <motion.div 
+                className="mt-8"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+            >
+                <h4 className="text-lg font-medium mb-4 text-center text-gray-200">
+                    Monthly Listening Hours {hoveredMonth && <span className="text-green-400">• {hoveredMonth} Highlighted</span>}
+                </h4>
                 <div className="relative flex justify-center">
-                    <svg ref={svgRef} width="100%" height="500"></svg>
+                    <svg ref={svgRef} width="100%" height="500" className="overflow-visible"></svg>
+                    <div
+                        ref={tooltipRef}
+                        className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50 transform -translate-x-1/2 -translate-y-full"
+                        style={{ display: 'none' }}
+                    ></div>
                 </div>
-            </div>
+            </motion.div>
             
-            <div className="mt-4 text-sm text-gray-400">
+            <div className="mt-6 text-sm text-gray-400 border-t border-gray-700/30 pt-4">
                 <p>
-                    This chart shows your listening activity over the past year. The radial visualization displays hours spent listening to music each month, with higher values extending further from the center.
+                    This chart shows your listening activity over the past year. The radial visualization displays how many hours you spent listening to music each month. Larger circles indicate more listening time in that month. Hover over the dots to see detailed statistics.
                 </p>
             </div>
-        </div>
+        </motion.div>
     );
 };
 
