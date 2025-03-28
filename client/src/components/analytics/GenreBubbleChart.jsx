@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import PropTypes from 'prop-types';
 import Loader from '../../styles/Loader';
 import { getGenreDistribution } from '../../services/analyticsService';
+import { motion } from 'framer-motion';
 
 const GenreBubbleChart = ({ userId }) => {
     const [data, setData] = useState([]);
@@ -12,6 +13,7 @@ const GenreBubbleChart = ({ userId }) => {
     
     const svgRef = useRef();
     const tooltipRef = useRef();
+    const containerRef = useRef();
     
     //& fetch data on time range change
     useEffect(() => {
@@ -59,7 +61,7 @@ const GenreBubbleChart = ({ userId }) => {
         //~ bubble layout
         const bubble = d3.pack()
             .size([width, height])
-            .padding(5);
+            .padding(8);
             
         //~ process data fr bubble layout
         const root = d3.hierarchy(hierarchy)
@@ -68,10 +70,60 @@ const GenreBubbleChart = ({ userId }) => {
             
         bubble(root);
         
+        //~ custom color palette
+        const colorPalette = [
+            "#10B981",
+            "#3B82F6", 
+            "#8B5CF6", 
+            "#EC4899",
+            "#F59E0B",
+            "#06B6D4",
+            "#6366F1",
+            "#84CC16",
+            "#14B8A6", 
+            "#F97316", 
+            "#8B5CF6", 
+            "#0EA5E9", 
+            "#D946EF", 
+            "#22C55E", 
+            "#4F46E5", 
+            "#7C3AED",
+        ];
+        
         //~ color scale fr bubbles
         const color = d3.scaleOrdinal()
             .domain(data.map(d => d.genre))
-            .range(d3.schemeCategory10);
+            .range(colorPalette);
+            
+        //~ add subtle gradient bg
+        svg.append("rect")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("fill", "url(#bubble-background)")
+            .attr("rx", 15)
+            .attr("ry", 15)
+            .attr("opacity", 0.05);
+            
+        //~ define gradients
+        const defs = svg.append("defs");
+        
+        //~ bg gradient
+        const backgroundGradient = defs.append("linearGradient")
+            .attr("id", "bubble-background")
+            .attr("x1", "0%")
+            .attr("y1", "0%")
+            .attr("x2", "100%")
+            .attr("y2", "100%");
+            
+        backgroundGradient.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", "#3B82F6")
+            .attr("stop-opacity", 0.2);
+            
+        backgroundGradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", "#10B981")
+            .attr("stop-opacity", 0.2);
             
         //~ bubbles
         const nodes = svg.selectAll('.node')
@@ -80,127 +132,236 @@ const GenreBubbleChart = ({ userId }) => {
             .append('g')
             .attr('class', 'node')
             .attr('transform', d => `translate(${d.x},${d.y})`);
+        
+        //~ create individual gradients fr each bubble
+        nodes.each(function(d, i) {
+            const gradientId = `bubble-gradient-${i}`;
+            const baseColor = color(d.data.name);
             
-        //~ circles
+            const baseHex = baseColor.substring(1);
+            
+            let lighterColor;
+            try {
+                const rgb = d3.rgb(baseColor);
+                lighterColor = d3.rgb(
+                    Math.min(255, rgb.r + 40),
+                    Math.min(255, rgb.g + 40),
+                    Math.min(255, rgb.b + 40)
+                ).formatHex();
+            } catch (e) {
+                lighterColor = baseColor;
+            }
+            
+            const gradient = defs.append("radialGradient")
+                .attr("id", gradientId)
+                .attr("cx", "30%")
+                .attr("cy", "30%")
+                .attr("r", "70%");
+                
+            gradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", lighterColor);
+                
+            gradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", baseColor);
+            
+            d.gradientId = gradientId;
+        });
+            
+        //~ circles w smooth entrance animation
         nodes.append('circle')
+            .attr('r', 0)
+            .attr('fill', d => `url(#${d.gradientId})`)
+            .attr('opacity', 0.85)
+            .attr('stroke', d => d3.rgb(color(d.data.name)).darker(0.5))
+            .attr('stroke-width', 1.5)
+            .attr('stroke-opacity', 0.7)
+            .attr('filter', 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))')
+            .transition()
+            .duration(800)
+            .delay((d, i) => i * 30)
+            .ease(d3.easeBounceOut)
             .attr('r', d => d.r)
-            .attr('fill', d => color(d.data.name))
-            .attr('opacity', 0.8)
-            .attr('stroke', '#fff')
-            .attr('stroke-width', 1)
-            .on('mouseover', function(event, d) {
-                //~ tooltip
-                d3.select(tooltipRef.current)
-                    .style('display', 'block')
-                    .style('left', (event.pageX - 25) + 'px')
-                    .style('top', (event.pageY - 1750) + 'px')
-                    .html(`
-                        <div class="font-bold">${d.data.name}</div>
-                        <div>${Math.round(d.data.value)} minutes listened</div>
-                        <div>${Math.round(d.data.trackCount)} tracks</div>
-                    `);
-                    
-                //~ highlight circle
+            .on('end', function(d) {
                 d3.select(this)
-                    .attr('stroke', '#fff')
-                    .attr('stroke-width', 2);
-            })
-            .on('mouseout', function() {
-                //~ hide tooltip
-                d3.select(tooltipRef.current)
-                    .style('display', 'none');
-                    
-                //~ restore circle
-                d3.select(this)
-                    .attr('stroke', '#fff')
-                    .attr('stroke-width', 1);
+                    .on('mouseover', function(event, d) {
+                        const chartRect = svgRef.current.getBoundingClientRect();
+                        const tooltipWidth = 180; 
+                        const tooltipHeight = 100;
+                        
+                        let xPosition = event.clientX - chartRect.left;
+                        let yPosition = event.clientY - chartRect.top - tooltipHeight - 10;
+                        
+                        xPosition = Math.max(0, Math.min(xPosition, chartRect.width - tooltipWidth));
+                        yPosition = Math.max(10, yPosition);
+                        
+                        //~ tooltip
+                        d3.select(tooltipRef.current)
+                            .style('display', 'block')
+                            .style('left', `${xPosition}px`)
+                            .style('top', `${yPosition}px`)
+                            .html(`
+                                <div class="font-medium text-lg" style="color:${color(d.data.name)}">${d.data.name}</div>
+                                <div class="mt-1 text-gray-200">${Math.round(d.data.value)} minutes listened</div>
+                                <div class="text-gray-300">${Math.round(d.data.trackCount)} tracks</div>
+                                <div class="text-xs mt-1 text-gray-400">${Math.round((d.value / root.value) * 100)}% of your total listening</div>
+                            `);
+                            
+                        //~ highlight circle
+                        d3.select(this)
+                            .transition()
+                            .duration(200)
+                            .attr('stroke-width', 3)
+                            .attr('stroke', '#fff')
+                            .attr('opacity', 1);
+                    })
+                    .on('mouseout', function() {
+                        //~ hide tooltip
+                        d3.select(tooltipRef.current)
+                            .style('display', 'none');
+                            
+                        //~ restore circle
+                        d3.select(this)
+                            .transition()
+                            .duration(200)
+                            .attr('stroke-width', 1.5)
+                            .attr('stroke', d => d3.rgb(color(d.data.name)).darker(0.5))
+                            .attr('stroke-opacity', 0.7)
+                            .attr('opacity', 0.85);
+                    });
             });
             
-        //~ add text labels but only fr larger bubbles
+        //~ add text labels but only fr larger bubbles w improved text readability
         nodes.filter(d => d.r > 30)
             .append('text')
             .attr('text-anchor', 'middle')
             .attr('dy', '.3em')
             .attr('fill', '#fff')
-            .style('font-size', d => Math.min(d.r / 3, 12) + 'px')
+            .attr('opacity', 0)
+            .style('font-size', d => Math.min(d.r / 3, 13) + 'px')
+            .style('font-weight', 'bold')
+            .style('text-shadow', '0 1px 3px rgba(0,0,0,0.7)')
             .text(d => d.data.name)
-            .style('pointer-events', 'none'); //~ prevent text frm interfering w hover
+            .style('pointer-events', 'none')
+            .transition()
+            .duration(500)
+            .delay((d, i) => 800 + i * 30)
+            .attr('opacity', 1);
             
     }, [data, loading]);
     
     if (loading) {
-        return <div className="flex justify-center items-center h-64"><Loader /></div>;
+        return (
+            <motion.div 
+                className="flex justify-center items-center h-64"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+            >
+                <Loader />
+            </motion.div>
+        );
     }
     
     if (error) {
         return (
-            <div className="p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-center">
-                <p className="text-red-500">{error}</p>
+            <motion.div 
+                className="p-6 bg-red-900/20 border border-red-500/50 rounded-xl backdrop-blur-sm text-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+            >
+                <p className="text-red-400 font-medium text-lg">{error}</p>
                 <p className="text-gray-400 mt-2">Please try refreshing the page.</p>
-            </div>
+            </motion.div>
         );
     }
     
     return (
-        <div className="bg-gray-800 p-4 rounded-lg shadow mb-8">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">Genre Distribution</h3>
+        <motion.div 
+            ref={containerRef}
+            className="bg-gray-800/40 backdrop-blur-xl p-6 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-purple-500/5 transition-all duration-300"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+        >
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
+                <motion.h3 
+                    className="text-xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-green-400 via-blue-500 to-purple-600"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                    Your Musical Universe
+                </motion.h3>
                 
-                <div className="flex space-x-2">
+                <motion.div 
+                    className="flex space-x-2 bg-gray-900/50 p-1 rounded-lg"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                >
                     <button
                         onClick={() => setTimeRange('short_term')}
-                        className={`px-3 py-1 rounded-md text-sm ${
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
                             timeRange === 'short_term' 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md' 
+                            : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
                         }`}
                     >
                         Last 4 Weeks
                     </button>
                     <button
                         onClick={() => setTimeRange('medium_term')}
-                        className={`px-3 py-1 rounded-md text-sm ${
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
                             timeRange === 'medium_term' 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md' 
+                            : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
                         }`}
                     >
                         Last 6 Months
                     </button>
                     <button
                         onClick={() => setTimeRange('long_term')}
-                        className={`px-3 py-1 rounded-md text-sm ${
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
                             timeRange === 'long_term' 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md' 
+                            : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
                         }`}
                     >
                         All Time
                     </button>
-                </div>
+                </motion.div>
             </div>
             
-            <div className="relative">
-                <svg ref={svgRef} width="100%" height="500"></svg>
+            <div className="relative overflow-hidden rounded-lg">
+                <svg ref={svgRef} width="100%" height="500" className="overflow-visible"></svg>
                 <div
                     ref={tooltipRef}
-                    className="absolute bg-gray-900 text-white p-2 rounded shadow-lg pointer-events-none hidden"
-                    style={{ display: 'none' }}
+                    className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"
+                    style={{ display: 'none', position: 'absolute' }}
                 ></div>
             </div>
             
-            <div className="mt-4 text-sm text-gray-400">
+            <div className="mt-6 text-sm text-gray-400 border-t border-gray-700/30 pt-4">
                 <p>
                     This visualization shows your listening distribution across different genres. 
-                    Larger bubbles represent genres you listen to more frequently.
+                    Larger bubbles represent genres you listen to more frequently. 
+                    Hover over bubbles to see detailed listening statistics.
                 </p>
                 {data.length === 0 && (
-                    <p className="mt-2 text-yellow-500">
-                        No genre data available for this time period. Continue using Spotify with Re-Wrapped to see your genre preferences!
-                    </p>
+                    <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg">
+                        <p className="text-yellow-500 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            No genre data available for this time period. Continue using Spotify with Re-Wrapped to see your genre preferences!
+                        </p>
+                    </div>
                 )}
             </div>
-        </div>
+        </motion.div>
     );
 };
 
