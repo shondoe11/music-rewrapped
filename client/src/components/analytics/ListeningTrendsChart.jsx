@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import PropTypes from 'prop-types';
 import Loader from '../../styles/Loader';
 import { getListeningTrends } from '../../services/analyticsService';
+import { motion } from 'framer-motion';
 
 const ListeningTrendsChart = ({ userId }) => {
     const [timeFrame, setTimeFrame] = useState('daily');
@@ -84,7 +85,7 @@ const ListeningTrendsChart = ({ userId }) => {
                     if (timeFrame === 'daily') {
                         return d3.timeFormat("%b %d")(d);
                     } else if (timeFrame === 'weekly') {
-                        return `Week of ${d3.timeFormat("%b %d")(d)}`;
+                        return `${d3.timeFormat("%b %d")(d)}`;
                     } else {
                         return d3.timeFormat("%b %Y")(d);
                     }
@@ -140,6 +141,53 @@ const ListeningTrendsChart = ({ userId }) => {
             .style("fill", "#3B82F6")
             .text("Minutes Listened");
             
+        //~ add gradient for tracks line
+        const tracksGradient = svg.append("defs")
+            .append("linearGradient")
+            .attr("id", "tracksGradient")
+            .attr("x1", "0%")
+            .attr("y1", "0%")
+            .attr("x2", "100%")
+            .attr("y2", "0%");
+            
+        tracksGradient.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", "#4ADE80");
+            
+        tracksGradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", "#22C55E");
+            
+        //~ add gradient for minutes line
+        const minutesGradient = svg.append("defs")
+            .append("linearGradient")
+            .attr("id", "minutesGradient")
+            .attr("x1", "0%")
+            .attr("y1", "0%")
+            .attr("x2", "100%")
+            .attr("y2", "0%");
+            
+        minutesGradient.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", "#3B82F6");
+            
+        minutesGradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", "#60A5FA");
+            
+        //~ area under tracks line
+        const tracksArea = d3.area()
+            .x(d => x(d.date))
+            .y0(height)
+            .y1(d => yTrackCount(d.trackCount))
+            .curve(d3.curveMonotoneX);
+            
+        svg.append("path")
+            .datum(parsedData)
+            .attr("fill", "url(#tracksGradient)")
+            .attr("fill-opacity", 0.1)
+            .attr("d", tracksArea);
+            
         //~ add line fr tracks played
         const tracksLine = d3.line()
             .x(d => x(d.date))
@@ -149,8 +197,8 @@ const ListeningTrendsChart = ({ userId }) => {
         svg.append("path")
             .datum(parsedData)
             .attr("fill", "none")
-            .attr("stroke", "#4ADE80")
-            .attr("stroke-width", 2)
+            .attr("stroke", "url(#tracksGradient)")
+            .attr("stroke-width", 3)
             .attr("d", tracksLine);
             
         //~ add line fr minutes listened
@@ -162,8 +210,8 @@ const ListeningTrendsChart = ({ userId }) => {
         svg.append("path")
             .datum(parsedData)
             .attr("fill", "none")
-            .attr("stroke", "#3B82F6")
-            .attr("stroke-width", 2)
+            .attr("stroke", "url(#minutesGradient)")
+            .attr("stroke-width", 3)
             .attr("stroke-dasharray", "5,5")
             .attr("d", minutesLine);
             
@@ -178,11 +226,25 @@ const ListeningTrendsChart = ({ userId }) => {
             .attr("r", 4)
             .attr("fill", "#4ADE80")
             .on("mouseover", function(event, d) {
+                //~ chart container position fr better tooltip positioning
+                const chartRect = svgRef.current.getBoundingClientRect();
+                const tooltipWidth = 200;
+                const tooltipHeight = 100;
+                
+                //~ calculate position (above the point)
+                let xPosition = event.clientX - chartRect.left - tooltipWidth / 2;
+                let yPosition = event.clientY - chartRect.top - tooltipHeight - 10;
+                
+                //~ make sure tooltip stays within chart bounds
+                xPosition = Math.max(0, Math.min(xPosition, chartRect.width - tooltipWidth));
+                yPosition = Math.max(10, yPosition);
+                
                 //~ show tooltip
                 d3.select(tooltipRef.current)
                     .style("display", "block")
-                    .style("left", (event.pageX - 50) + "px")
-                    .style("top", (event.pageY - 400) + "px")
+                    .style("left", `${xPosition}px`)
+                    .style("top", `${yPosition}px`)
+                    .style("transform", "translateY(0)")
                     .html(`
                         <div class="date">${formatTooltipDate(d.date, timeFrame)}</div>
                         <div class="tracks"><span>Tracks:</span> ${d.trackCount}</div>
@@ -191,7 +253,9 @@ const ListeningTrendsChart = ({ userId }) => {
                     
                 //~ highlight dot
                 d3.select(this)
-                    .attr("r", 6)
+                    .transition()
+                    .duration(200)
+                    .attr("r", 7)
                     .attr("stroke", "white")
                     .attr("stroke-width", 2);
             })
@@ -202,6 +266,8 @@ const ListeningTrendsChart = ({ userId }) => {
                     
                 //~ restore dot
                 d3.select(this)
+                    .transition()
+                    .duration(200)
                     .attr("r", 4)
                     .attr("stroke", "none");
             });
@@ -217,11 +283,25 @@ const ListeningTrendsChart = ({ userId }) => {
             .attr("r", 4)
             .attr("fill", "#3B82F6")
             .on("mouseover", function(event, d) {
+                //~ chart container position fr better tooltip positioning
+                const chartRect = svgRef.current.getBoundingClientRect();
+                const tooltipWidth = 200;
+                const tooltipHeight = 100;
+                
+                //~ calculate position (above the point)
+                let xPosition = event.clientX - chartRect.left - tooltipWidth / 2;
+                let yPosition = event.clientY - chartRect.top - tooltipHeight - 10; 
+                
+                //~ make sure tooltip stays within chart bounds
+                xPosition = Math.max(0, Math.min(xPosition, chartRect.width - tooltipWidth));
+                yPosition = Math.max(10, yPosition);
+                
                 //~ show tooltip
                 d3.select(tooltipRef.current)
                     .style("display", "block")
-                    .style("left", (event.pageX - 50) + "px")
-                    .style("top", (event.pageY - 400) + "px")
+                    .style("left", `${xPosition}px`)
+                    .style("top", `${yPosition}px`)
+                    .style("transform", "translateY(0)")
                     .html(`
                         <div class="date">${formatTooltipDate(d.date, timeFrame)}</div>
                         <div class="tracks"><span>Tracks:</span> ${d.trackCount}</div>
@@ -230,7 +310,9 @@ const ListeningTrendsChart = ({ userId }) => {
                     
                 //~ highlight dot
                 d3.select(this)
-                    .attr("r", 6)
+                    .transition()
+                    .duration(200)
+                    .attr("r", 7)
                     .attr("stroke", "white")
                     .attr("stroke-width", 2);
             })
@@ -241,6 +323,8 @@ const ListeningTrendsChart = ({ userId }) => {
                     
                 //~ restore dot
                 d3.select(this)
+                    .transition()
+                    .duration(200)
                     .attr("r", 4)
                     .attr("stroke", "none");
             });
@@ -294,85 +378,121 @@ const ListeningTrendsChart = ({ userId }) => {
     };
     
     if (loading) {
-        return <div className="flex justify-center items-center h-64"><Loader /></div>;
+        return (
+            <motion.div 
+                className="flex justify-center items-center h-64"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+            >
+                <Loader />
+            </motion.div>
+        );
     }
     
     if (error) {
         return (
-            <div className="p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-center">
-                <p className="text-red-500">{error}</p>
+            <motion.div 
+                className="p-6 bg-red-900/20 border border-red-500/50 rounded-xl backdrop-blur-sm text-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+            >
+                <p className="text-red-400 font-medium text-lg">{error}</p>
                 <p className="text-gray-400 mt-2">Please try refreshing the page.</p>
-            </div>
+            </motion.div>
         );
     }
     
     return (
-        <div className="bg-gray-800 p-4 rounded-lg shadow mb-8">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">Listening Trends</h3>
+        <motion.div 
+            className="bg-gray-800/40 backdrop-blur-xl p-6 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-green-500/5 transition-all duration-300"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+        >
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
+                <motion.h3 
+                    className="text-xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                    Listening Trends
+                </motion.h3>
                 
-                <div className="flex space-x-2">
+                <motion.div 
+                    className="flex space-x-2 bg-gray-900/50 p-1 rounded-lg"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                >
                     <button
                         onClick={() => setTimeFrame('daily')}
-                        className={`px-3 py-1 rounded-md text-sm ${
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
                             timeFrame === 'daily' 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
+                            : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
                         }`}
                     >
                         Daily
                     </button>
                     <button
                         onClick={() => setTimeFrame('weekly')}
-                        className={`px-3 py-1 rounded-md text-sm ${
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
                             timeFrame === 'weekly' 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
+                            : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
                         }`}
                     >
                         Weekly
                     </button>
                     <button
                         onClick={() => setTimeFrame('monthly')}
-                        className={`px-3 py-1 rounded-md text-sm ${
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
                             timeFrame === 'monthly' 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
+                            : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
                         }`}
                     >
                         Monthly
                     </button>
-                </div>
+                </motion.div>
             </div>
             
             <div className="relative">
-                <svg ref={svgRef} width="100%" height="400"></svg>
+                <svg ref={svgRef} width="100%" height="400" className="overflow-visible"></svg>
                 <div
                     ref={tooltipRef}
-                    className="absolute bg-gray-900 text-white p-2 rounded shadow-lg pointer-events-none hidden"
-                    style={{ display: 'none' }}
+                    className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50 max-w-[200px]"
+                    style={{ display: 'none', position: 'absolute' }}
                 >
-                    <div className="date font-bold"></div>
-                    <div className="tracks">
-                        <span className="text-green-500">Tracks:</span> <span></span>
+                    <div className="date font-bold text-sm mb-1 text-gray-300"></div>
+                    <div className="tracks text-sm">
+                        <span className="text-green-400 font-medium">Tracks:</span> <span></span>
                     </div>
-                    <div className="minutes">
-                        <span className="text-blue-500">Minutes:</span> <span></span>
+                    <div className="minutes text-sm">
+                        <span className="text-blue-400 font-medium">Minutes:</span> <span></span>
                     </div>
                 </div>
             </div>
             
-            <div className="mt-4 text-sm text-gray-400">
+            <div className="mt-6 text-sm text-gray-400 border-t border-gray-700/30 pt-4">
                 <p>
                     This chart shows your listening activity over time. Toggle between daily, weekly, and monthly views to see different patterns.
                 </p>
                 {data.length === 0 && (
-                    <p className="mt-2 text-yellow-500">
-                        No listening data available for this time period. Continue using Spotify with Re-Wrapped to see your trends!
-                    </p>
+                    <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg">
+                        <p className="text-yellow-500 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            No listening data available for this time period. Continue using Spotify with Re-Wrapped to see your trends!
+                        </p>
+                    </div>
                 )}
             </div>
-        </div>
+        </motion.div>
     );
 };
 
