@@ -4,12 +4,17 @@ import redis
 class Config(object):
     SECRET_KEY = os.environ.get('SECRET_KEY', 'default-secret-key')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
+    #& engine options to ensure healthy connections across forks
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 280
+    }
+
     SESSION_TYPE = 'redis'
     SESSION_PERMANENT = False
     SESSION_COOKIE_DOMAIN = None
     # os.environ.get('SESSION_COOKIE_DOMAIN', '127.0.0.1')
-    
+
     #& server-side sesh settings
     SESSION_USE_SIGNER = True
     SESSION_REDIS = redis.Redis(
@@ -21,7 +26,6 @@ class Config(object):
 
 class DevelopmentConfig(Config):
     DEBUG = True
-   
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
 
 class ProductionConfig(Config):
@@ -30,8 +34,7 @@ class ProductionConfig(Config):
 
 class TestingConfig(Config):
     TESTING = True
-     #& placeholder connection string first
+    #& placeholder connection string 1st
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         'DATABASE_URL', 'postgresql+psycopg://user:password@localhost/music_rewritten_test'
     )
-
