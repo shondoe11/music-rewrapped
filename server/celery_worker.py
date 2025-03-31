@@ -2,9 +2,19 @@ import os
 from celery import Celery
 from celery.schedules import crontab
 from dotenv import load_dotenv
-from server.app import create_app
-
 load_dotenv()
+from server.app import create_app
+from server.config import DevelopmentConfig  #~ current app config class: can change based on environment
+
+#* Init Extensions
+from .extensions import db
+from flask_migrate import Migrate
+from flask_cors import CORS
+from flask_socketio import SocketIO
+from flask_session import Session
+
+migrate = Migrate()
+socketio = SocketIO(cors_allowed_origins='*')
 
 def make_celery(app):
     #& celery instance using Flask app config
@@ -13,27 +23,32 @@ def make_celery(app):
         broker=os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0'),
         backend=os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
     )
-    #~ use app config in celery
+    #& broker_connection_retry_on_startup to preserve previous connection retry behavior
+    celery.conf.broker_connection_retry_on_startup = True
+
     celery.conf.update(app.config)
     
     #~ periodic task looping thru all active users every custom interval
     celery.conf.beat_schedule = {
         'sync-all-active-users-every-hour': {
             'task': 'server.tasks.sync_tasks.sync_all_users',
-            'schedule': crontab(minute=0)  #~ run at the top of every hr
+            'schedule': crontab(minute=0)  #~ run top of every hr
         },
         'sync-recently-played-every-15-minutes': {
             'task': 'server.tasks.sync_tasks.fetch_recent_played_all_users',
             'schedule': crontab(minute='*/15')  #~ run every 15 min
+        },
+        'update-event-statuses-daily': {
+            'task': 'server.tasks.sync_tasks.update_event_statuses',
+            'schedule': crontab(hour='0', minute='0')  #~ run daily @ midnight
         }
     }
-    
-    #~ create task base, wrap tasks in app context
+
     class ContextTask(celery.Task):
         def __call__(self, *args, **kwargs):
             with app.app_context():
                 return self.run(*args, **kwargs)
-            
+
     celery.Task = ContextTask
     return celery
 
