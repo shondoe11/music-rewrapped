@@ -107,6 +107,7 @@ class Event(db.Model):
     views = db.Column(db.Integer, default=0)
     saves = db.Column(db.Integer, default=0)
     engagement = db.Column(db.Integer, default=0)
+    data_source = db.Column(db.String(64), default='internal')  #~ src of event data, e.g., 'jambase', 'ticketmaster', 'internal'
     
     def __repr__(self):
         return f'<Event {self.title} on {self.event_date}>'
