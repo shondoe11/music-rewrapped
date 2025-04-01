@@ -63,7 +63,8 @@ def save_event():
             promoter_info=data.get('promoter_info', ''),
             tags=data.get('tags', []),
             url=data.get('url', ''),
-            image=data.get('image', '')
+            image=data.get('image', ''),
+            data_source=data.get('data_source', '')  #~ data src fr attribution
         )
         db.session.add(event)
         db.session.commit()
@@ -107,7 +108,8 @@ def save_event():
             'tags': event.tags,
             'url': event.url,
             'image': event.image,
-            'saves': event.saves
+            'saves': event.saves,
+            'data_source': event.data_source  #~ include data src in res
         }
     }), 201
 
@@ -133,7 +135,11 @@ def all_events():
         tm_response.raise_for_status()
         tm_data = tm_response.json()
         if tm_data and tm_data.get('_embedded') and tm_data['_embedded'].get('events'):
-            external_events.extend(tm_data['_embedded']['events'])
+            tm_events = tm_data['_embedded']['events']
+            #~ mark data src
+            for event in tm_events:
+                event['data_source'] = 'ticketmaster'
+            external_events.extend(tm_events)
     except Exception as e:
         errors['ticketmaster'] = str(e)
     
@@ -143,11 +149,24 @@ def all_events():
         jambase_response.raise_for_status()
         jambase_data = jambase_response.json()
         if jambase_data and jambase_data.get('events'):
-            external_events.extend(jambase_data['events'])
+            jambase_events = jambase_data['events']
+            #~ mark data src + ensure necessary links
+            for event in jambase_events:
+                event['data_source'] = 'jambase'
+                
+                #& add jambase url if no ticket links avail
+                if not event.get('ticketLinks') or len(event.get('ticketLinks', [])) == 0:
+                    #~ format jambase event url fr compliance
+                    artist_name = event.get('name', '').replace(' ', '-').lower()
+                    venue_name = event.get('venue', {}).get('name', '').replace(' ', '-').lower()
+                    event_date = event.get('date', '').split('T')[0] if event.get('date') else ''
+                    event['jambase_url'] = f"https://www.jambase.com/show/{artist_name}-{venue_name}-{event_date}"
+            
+            external_events.extend(jambase_events)
     except Exception as e:
         errors['jambase'] = str(e)
     
-    #& fetch internal sponsored events from db (recommended events)
+    #& fetch internal sponsored events frm db (recommended events)
     internal_sponsored = Event.query.filter_by(is_sponsored=True).all()
     recommended_events = []
     for ev in internal_sponsored:
@@ -172,7 +191,8 @@ def all_events():
             'url': ev.url,
             'image': ev.image,
             'views': ev.views,
-            'saves': ev.saves
+            'saves': ev.saves,
+            'data_source': ev.data_source or 'internal'  #~ include data src
         })
     return jsonify({
         'recommended_events': recommended_events,
@@ -225,7 +245,8 @@ def get_saved_events():
             'promoter_info': e.promoter_info,
             'tags': e.tags,
             'url': e.url,
-            'image': e.image
+            'image': e.image,
+            'data_source': e.data_source  #~ include data source fr attribution on frontend
         })
     return jsonify({'events': saved_list})
 
@@ -262,7 +283,8 @@ def promoter_events():
                 'target_roles': ev.target_roles,
                 'url': ev.url,
                 'image': ev.image,
-                'details': ev.details  
+                'details': ev.details,
+                'data_source': ev.data_source or 'internal'  #~ include data src
             })
         return jsonify({'events': events_list})
     
@@ -303,7 +325,8 @@ def promoter_events():
             target_roles=data.get('targetRoles', []),
             views=0,
             saves=0,
-            engagement=0
+            engagement=0,
+            data_source='internal'  #~ mark as internal data src
         )
         #& if event submitted by promoter role, mark as sponsored
         if data.get('promoter_info') or True:  #~ condition adjustable
@@ -329,7 +352,8 @@ def promoter_events():
             'url': new_event.url,
             'image': new_event.image,
             'views': 0,
-            'saves': 0
+            'saves': 0,
+            'data_source': new_event.data_source
         }}), 201
 
 #& update promoter event details
@@ -384,7 +408,8 @@ def update_promoter_event(event_id):
         'listening_threshold': event.listening_threshold,
         'target_roles': event.target_roles,
         'views': event.views,
-        'saves': event.saves
+        'saves': event.saves,
+        'data_source': event.data_source
     }}), 200
 
 @events_bp.route('/promoter/<int:event_id>', methods=['DELETE'])
@@ -725,7 +750,8 @@ def export_event_analytics(event_id):
             'event_date': event.event_date.isoformat() if event.event_date else None,
             'total_views': event.views,
             'total_saves': event.saves,
-            'engagement': event.engagement
+            'engagement': event.engagement,
+            'data_source': event.data_source
         },
         'time_series': date_range
     }
@@ -790,7 +816,8 @@ def export_promoter_analytics():
             'views': event.views or 0,
             'saves': event.saves or 0,
             'engagement': event.engagement or 0,
-            'save_rate': round((event.saves or 0) / (event.views or 1) * 100, 2)
+            'save_rate': round((event.saves or 0) / (event.views or 1) * 100, 2),
+            'data_source': event.data_source or 'internal'
         })
     
     if export_format == 'json':
@@ -802,7 +829,7 @@ def export_promoter_analytics():
         writer = csv.writer(output)
         
         #~ write header row
-        writer.writerow(['id', 'title', 'location', 'event_date', 'views', 'saves', 'engagement', 'save_rate'])
+        writer.writerow(['id', 'title', 'location', 'event_date', 'views', 'saves', 'engagement', 'save_rate', 'data_source'])
         
         #~ write data rows
         for event in event_data:
@@ -814,7 +841,8 @@ def export_promoter_analytics():
                 event['views'],
                 event['saves'],
                 event['engagement'],
-                event['save_rate']
+                event['save_rate'],
+                event['data_source']
             ])
         
         #~ prep response
