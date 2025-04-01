@@ -84,8 +84,8 @@ const Register = () => {
           gravity={0.15} 
           friction={1} 
           wallBounce={0.9} 
-          followCursor={true}
-          colors={[0x4ADE80, 0x3B82F6, 0xF472B6]}
+          followCursor={false}
+          colors={[0x1DB954, 0x121212, 0xffffff]}
           ambientColor={2021216}
           ambientIntensity={5}
           lightIntensity={300}
