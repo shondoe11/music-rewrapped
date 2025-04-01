@@ -2,12 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { useAuth } from '../hooks/useAuth';
-import { getCurrentUser, getUserPreferences, updateUserPreferences, changePassword } from '../api';
+import { useNavigate } from 'react-router-dom';
+import { getCurrentUser, getUserPreferences, updateUserPreferences, changePassword, deleteAccount } from '../api';
 import Threads from '../styles/backgrounds/Threads';
 import CircularText from '../styles/text-animations/CircularText';
+import DeleteAccountModal from '../components/DeleteAccountModal';
 
 const Profile = () => {
-  const { user, login } = useAuth();
+  const { user, login, logout } = useAuth();
+  const navigate = useNavigate();
   const [profileData, setProfileData] = useState({
     profile_image_url: '',
     display_name: '',
@@ -22,6 +25,7 @@ const Profile = () => {
     favoriteVenues: ''
   });
   const [showFollowers, setShowFollowers] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   //& custom animation ref
   const circleContainerRef = useRef(null);
   //& manual hover state
@@ -98,6 +102,19 @@ const Profile = () => {
 
   const handleToggleFollowers = () => {
     setShowFollowers(!showFollowers);
+  };
+
+  //& handle account deletion
+  const handleDeleteAccount = async (password) => {
+    try {
+      const response = await deleteAccount(user.id, password);
+      toast.success(response.message);
+      logout();
+      navigate('/spotify-login');
+    } catch (err) {
+      console.error('Account deletion error:', err);
+      throw new Error(err.message || 'Failed to delete account');
+    }
   };
 
   const onPasswordSubmit = async (data) => {
@@ -177,13 +194,13 @@ const Profile = () => {
       </div>
       
       <div className="max-w-6xl mx-auto relative z-10">
-        <h1 className="text-5xl font-bold mb-12 bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500">Your Profile</h1>
+        <h1 className="text-5xl font-bold mb-12 bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500 mt-20">Your Profile</h1>
         
         <div className="flex flex-col md:flex-row gap-8">
           {/* Profile Info Card */}
           <div className="w-full md:w-1/3 backdrop-blur-sm bg-gray-900/60 p-8 rounded-2xl border border-gray-800 shadow-lg shadow-green-500/10 transition-all duration-300 hover:shadow-green-500/20">
             <div className="flex flex-col items-center">
-              {/* Profile Image w Circular Text - combined hover state */}
+              {/* Profile Img w Circular Text - combined hover state */}
               <div 
                 ref={circleContainerRef}
                 className="relative w-[240px] h-[240px] flex items-center justify-center mx-auto mb-6 group"
@@ -310,12 +327,32 @@ const Profile = () => {
                   </div>
                 </div>
               </div>
+              
+              {/* Delete Account */}
+              {user && user.role !== 'guest' && (
+                <div className="mt-8 pt-4 border-t border-gray-700">
+                  <h3 className="text-xl font-semibold text-red-500 mb-3">Danger Zone</h3>
+                  <p className="text-sm text-gray-400 mb-4">
+                    Deleting your account will remove all your listening history data and reset your account to guest status.
+                    Your Spotify connection will be maintained.
+                  </p>
+                  <button
+                    onClick={() => setShowDeleteModal(true)}
+                    className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center justify-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete Account
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           
           {/* Settings Column */}
           <div className="w-full md:w-2/3 space-y-8">
-            {/* Change Password Card */}
+            {/* Change PW Card */}
             <div className="bg-gray-800/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-gray-700/50 transition-all duration-300 hover:shadow-green-500/5">
               <h3 className="text-2xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500">Change Password</h3>
               <form onSubmit={handlePasswordSubmit(onPasswordSubmit)} className="space-y-6">
@@ -458,6 +495,13 @@ const Profile = () => {
           </div>
         </div>
       </div>
+      
+      {/* Delete Acc Modal */}
+      <DeleteAccountModal 
+        isOpen={showDeleteModal} 
+        onClose={() => setShowDeleteModal(false)} 
+        onConfirm={handleDeleteAccount} 
+      />
     </div>
   );
 };
