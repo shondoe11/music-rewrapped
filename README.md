@@ -46,8 +46,10 @@ Music Re-Wrapped is an interactive app that aggregates Spotify listening data an
   
 - **Promoter Panel:**  
   - Enables promoters to submit new events and manage existing event listings.
-  - Basic event management dashboard displaying submitted events.
-  
+  - Analytics dashboard with metrics like views, saves, and engagement.
+  - Time series data visualization for event performance tracking.
+  - Targeting effectiveness analysis to optimize event promotion strategies.
+
 - **User Profile:**  
   - Displays profile information synced from Spotify.
   - Allows users to update interest preferences and change their password.
@@ -55,6 +57,7 @@ Music Re-Wrapped is an interactive app that aggregates Spotify listening data an
 - **API Integration:**  
   - Server endpoints to interact with Spotify for recently played tracks, top artists, top tracks, and top albums.
   - Endpoints to handle event-related operations (list, save, delete, and promoter events).
+  - Analytics endpoints for tracking and reporting event performance metrics.
 
 ## Data Model
 
@@ -69,10 +72,17 @@ Music Re-Wrapped is an interactive app that aggregates Spotify listening data an
   
 - **Events Table:**  
   - Maintains concert and event details (title, location, date, promoter info, tags, and external URLs).
+  - Tracks performance metrics such as views, saves, and engagement scores.
+
+- **Event Metrics Log Table:** 
+  - Stores time-series data for event analytics to track daily views and saves.
   
 - **User Preferences & Tags Table:**  
-  - Captures user-specific settings for interests and saved events.
-  
+  - Captures user-specific settings for interests and personalization.
+
+- **Saved Events Table:**  
+  - Links users to their saved events for easy retrieval.
+
 - **API Integration Logs:**  
   - Logs API calls to external services (Spotify, Ticketmaster, Jambase) for performance monitoring and caching purposes.
 
