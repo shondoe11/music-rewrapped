@@ -6,17 +6,17 @@ import './globals.css'
 import { AuthProvider } from './context/AuthProvider.jsx'
 import 'react-toastify/dist/ReactToastify.css';
 import { Bounce, Flip, Slide, ToastContainer, Zoom } from 'react-toastify'
-import SplashCursor from './styles/animations/SplashCursor.jsx'
+import ClickSpark from './styles/animations/ClickSpark.jsx';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <SplashCursor 
-      DENSITY_DISSIPATION={5}
-      COLOR_UPDATE_SPEED={15}
-      SPLAT_RADIUS={0.1}
-      SPLAT_FORCE={9000}
-      TRANSPARENT={true}
-    />
+    <ClickSpark
+    sparkColor='#00FF6E'
+    sparkSize={14}
+    sparkRadius={10}
+    sparkCount={12}
+    duration={500}
+    >
     <AuthProvider>
       <App />
       <ToastContainer
@@ -33,5 +33,6 @@ createRoot(document.getElementById('root')).render(
         transition={Flip}
         />
     </AuthProvider>
+    </ClickSpark>
   </React.StrictMode>,
 )
