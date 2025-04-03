@@ -24,6 +24,8 @@ venv/
 
 # dotenv environment variables
 .env
+.env.development
+.env.production
 
 # editor directories
 .vscode/
