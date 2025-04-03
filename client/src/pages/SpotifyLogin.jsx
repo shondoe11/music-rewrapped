@@ -7,6 +7,7 @@ import Magnet from "../styles/animations/Magnet";
 import RotatingText from "../styles/text-animations/RotatingText";
 import GradientText from "../styles/text-animations/GradientText";
 import Crosshair from "../styles/animations/Crosshair";
+import SplashCursor from "../styles/animations/SplashCursor";
 
 const SpotifyLogin = () => {
   const navigate = useNavigate();
@@ -55,6 +56,13 @@ const SpotifyLogin = () => {
       className="relative w-full min-h-screen overflow-hidden"
       ref={containerRef}
     >
+      <SplashCursor 
+      DENSITY_DISSIPATION={5}
+      COLOR_UPDATE_SPEED={15}
+      SPLAT_RADIUS={0.1}
+      SPLAT_FORCE={9000}
+      TRANSPARENT={true}
+      />
       {showCrosshair && (
         <Crosshair 
           containerRef={containerRef} 
