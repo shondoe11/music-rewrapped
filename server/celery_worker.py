@@ -2,9 +2,13 @@ import os
 from celery import Celery
 from celery.schedules import crontab
 from dotenv import load_dotenv
-load_dotenv()
+
+#& determine env based on 'FLASK_ENV'; default is development
+env = os.environ.get('FLASK_ENV', 'development')
+load_dotenv(dotenv_path=f".env.{env}")  #~ load appropriate .env file
+
 from server.app import create_app
-from server.config import DevelopmentConfig  #~ current app config class: can change based on environment
+from server.config import DevelopmentConfig  #~ current app config class: can change based on env
 
 #* Init Extensions
 from .extensions import db
