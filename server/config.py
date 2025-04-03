@@ -17,12 +17,16 @@ class Config(object):
 
     #& server-side sesh settings
     SESSION_USE_SIGNER = True
-    SESSION_REDIS = redis.Redis(
-        host=os.environ.get('REDIS_HOST', 'localhost'),
-        port=int(os.environ.get('REDIS_PORT', 6379)),
-        db=int(os.environ.get('REDIS_DB', 0)),
-        password=os.environ.get('REDIS_PASSWORD', None)
-    )
+    #& if redis url provided (prod), use it; else fallback dev settings
+    if os.environ.get('REDIS_URL'):
+        SESSION_REDIS = redis.Redis.from_url(os.environ.get('REDIS_URL'))
+    else:
+        SESSION_REDIS = redis.Redis(
+            host=os.environ.get('REDIS_HOST', 'localhost'),
+            port=int(os.environ.get('REDIS_PORT', 6379)),
+            db=int(os.environ.get('REDIS_DB', 0)),
+            password=os.environ.get('REDIS_PASSWORD', None)
+        )
 
 class DevelopmentConfig(Config):
     DEBUG = True
