@@ -1,8 +1,11 @@
 from dotenv import load_dotenv
 import os
-load_dotenv()
+#& determine env based on 'FLASK_ENV'; default is development
+env = os.environ.get('FLASK_ENV', 'development')
+load_dotenv(dotenv_path=f".env.{env}")  #~ load appropriate .env file
 #* App factory (Flask app config)
-from flask import Flask
+from flask import Flask, jsonify
+from server.redis_client import redis_client
 from server.config import DevelopmentConfig  #~ current app config class: can change based on environment
 
 #* Init Extensions
@@ -49,7 +52,26 @@ def create_app(config_class=DevelopmentConfig):
     def index():
         return 'Hello, Music Re-Wrapped!'
     
+    #& health-check endpoint verify db & redis connectivity
+    @app.route('/health')
+    def health_check():
+        #~ check db connectivity
+        try:
+            from sqlalchemy import text
+            db.session.execute(text('SELECT 1'))
+        except Exception as e:
+            return jsonify({'status': 'error', 'component': 'database', 'error': str(e)}), 500
+        #~ check redis connectivity
+        try:
+            redis_client.ping()
+        except Exception as e:
+            return jsonify({'status': 'error', 'component': 'redis', 'error': str(e)}), 500
+
+        return jsonify({'status': 'ok'}), 200
+        
     return app
+
+app = create_app()
 
 @socketio.on('connect')
 def handle_connect():
