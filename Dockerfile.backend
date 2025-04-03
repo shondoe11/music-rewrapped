@@ -1,0 +1,25 @@
+#* official python runtime as parent image
+FROM python:3.11-slim
+
+#& prevent Python frm writing pyc files & enable unbuffered logging
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+#~ set working dir inside container
+WORKDIR /app
+
+#~ install system dependencies
+RUN apt-get update && apt-get install -y build-essential
+
+#~ copy & install python dependencies
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+#~ copy rest of app code
+COPY . .
+
+#~ expose the port my Flask app is running (5001)
+EXPOSE 5001
+
+#~ run automated db migrations before serving Flask app via gunicorn
+CMD ["sh", "-c", "flask db upgrade && gunicorn -b 0.0.0.0:5001 server.app:app"]
