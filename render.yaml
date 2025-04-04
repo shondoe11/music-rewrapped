@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: music-rewrapped-backend
+    env: docker
+    dockerfilePath: Dockerfile.backend
+    buildCommand: ""
+    startCommand: gunicorn -b 0.0.0.0:5001 server.app:app
+    plan: standard
+    envVars:
+      - key: DATABASE_URL
+        fromSecret: neon_database_url
+      - key: REDIS_URL
+        fromSecret: upstash_redis_url
+      - key: SECRET_KEY
+        fromSecret: app_secret_key
+      - key: JWT_SECRET
+        fromSecret: jwt_secret
+      - key: SPOTIFY_CLIENT_ID
+        fromSecret: spotify_client_id
+      - key: SPOTIFY_CLIENT_SECRET
+        fromSecret: spotify_client_secret
+      - key: SPOTIFY_REDIRECT_URI
+        value: "https://my-production-domain.com/auth/callback"
+      - key: CLIENT_HOME_URL
+        value: "https://my-production-domain.com/home"
+    healthCheckPath: /health
+
+  - type: worker
+    name: music-rewrapped-celery
+    env: docker
+    dockerfilePath: Dockerfile.celery
+    buildCommand: ""
+    startCommand: celery -A server.celery_worker:celery worker --loglevel=info
+    plan: standard
+    envVars:
+      - key: DATABASE_URL
+        fromSecret: neon_database_url
+      - key: REDIS_URL
+        fromSecret: upstash_redis_url
+      - key: SECRET_KEY
+        fromSecret: app_secret_key
+
+  - type: web
+    name: music-rewrapped-frontend
+    env: docker
+    dockerfilePath: client/Dockerfile
+    buildCommand: ""
+    startCommand: serve -s dist -l 5000
+    plan: standard
+    envVars:
+      - key: VITE_BASE_URL
+        value: "https://my-production-domain.com"
