@@ -23,7 +23,7 @@ def create_app(config_class=DevelopmentConfig):
     app.config.from_object(config_class)
     
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    app.config['SESSION_COOKIE_SECURE'] = False
+    app.config['SESSION_COOKIE_SECURE'] = True
     Session(app)
     
     CORS(app, supports_credentials=True)
