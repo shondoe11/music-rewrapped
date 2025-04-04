@@ -1,7 +1,11 @@
 from dotenv import load_dotenv
 import os
-#& determine env based on 'FLASK_ENV'; default is development
-env = os.environ.get('FLASK_ENV', 'development')
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+#& determine env based on 'FLASK_DEBUG';
+debug = os.environ.get('FLASK_DEBUG', '0') == '1'
+env = 'production' if not debug else 'development'
 load_dotenv(dotenv_path=f".env.{env}")  #~ load appropriate .env file
 #* App factory (Flask app config)
 from flask import Flask, jsonify
@@ -26,7 +30,7 @@ def create_app(config_class=DevelopmentConfig):
     app.config['SESSION_COOKIE_SECURE'] = True
     Session(app)
     
-    CORS(app, supports_credentials=True)
+    CORS(app, origins=["https://music-rewrapped.onrender.com"], supports_credentials=True)
     
     #& Init extensions with app context
     db.init_app(app)
