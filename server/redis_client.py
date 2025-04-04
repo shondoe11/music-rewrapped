@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import redis
 from dotenv import load_dotenv
@@ -15,14 +16,16 @@ if os.environ.get('REDIS_URL'):
         redis_client = redis.Redis.from_url(
             os.environ.get('REDIS_URL'),
             decode_responses=True,
-            socket_timeout=5, 
+            socket_timeout=5,
             socket_connect_timeout=5
         )
-        # Test the connection
         redis_client.ping()
         logging.info("Redis connection successful.")
     except redis.ConnectionError as e:
         logging.error("Redis connection failed: %s", e)
+        raise
+    except Exception as e:
+        logging.error("Unexpected error while connecting to Redis: %s", e)
         raise
 else:
     REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
