@@ -20,9 +20,9 @@ services:
       - key: SPOTIFY_CLIENT_SECRET
         fromSecret: spotify_client_secret
       - key: SPOTIFY_REDIRECT_URI
-        value: "https://my-production-domain.com/auth/callback"
+        value: "https://music-rewrapped.onrender.com/auth/callback"
       - key: CLIENT_HOME_URL
-        value: "https://my-production-domain.com/home"
+        value: "https://music-rewrapped.onrender.com/home"
     healthCheckPath: /health
 
   - type: worker
@@ -49,4 +49,4 @@ services:
     plan: standard
     envVars:
       - key: VITE_BASE_URL
-        value: "https://my-production-domain.com"
+        value: "https://music-rewrapped.onrender.com"
