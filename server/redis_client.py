@@ -3,12 +3,20 @@ import os
 import redis
 from dotenv import load_dotenv
 import logging
+import ssl
 
 logging.basicConfig(level=logging.INFO)
 
 #& determine env based on 'FLASK_ENV'; default is development
 env = os.environ.get('FLASK_ENV', 'development')
 load_dotenv(dotenv_path=f".env.{env}")  #~ load appropriate .env file
+
+#& convert 'CERT_REQUIRED' in REDIS_URL query param to numeric value
+redis_url = os.environ.get('REDIS_URL')
+if redis_url and "ssl_cert_reqs=CERT_REQUIRED" in redis_url:
+    redis_url = redis_url.replace("CERT_REQUIRED", str(ssl.CERT_REQUIRED))
+    #~ overwrite env value w converted URL
+    os.environ['REDIS_URL'] = redis_url
 
 #& if redis url provided (prod), use it; else fallback dev settings
 if os.environ.get('REDIS_URL'):
