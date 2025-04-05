@@ -4,7 +4,7 @@ WORKDIR /app
 
 #& copy pkg files & install dependencies
 COPY package.json .
-COPY package-lock.json .  
+COPY package-lock.json .
 #^ include lock file if avail
 RUN npm install
 
@@ -12,8 +12,8 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-#~ install static file server to serve production assets
-RUN npm install -g serve
+#~ install static file server to serve production assets (using the latest version)
+RUN npm install -g serve@latest
 
 #~ expose port on which static server will run (e.g., 5000)
 EXPOSE 5000

@@ -49,4 +49,4 @@ services:
     plan: standard
     envVars:
       - key: VITE_BASE_URL
-        value: "https://musicrewrapped.onrender.com"
+        value: "https://music-rewrapped.onrender.com"
