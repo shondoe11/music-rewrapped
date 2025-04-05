@@ -30,6 +30,7 @@ venv/
 # editor directories
 .vscode/
 .idea/
+.windsurfrules
 
 # os-specific
 .DS_Store

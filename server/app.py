@@ -30,7 +30,7 @@ def create_app(config_class=DevelopmentConfig):
     app.config['SESSION_COOKIE_SECURE'] = True
     Session(app)
     
-    CORS(app, origins=["https://music-rewrapped.onrender.com"], supports_credentials=True)
+    CORS(app, origins=["https://musicrewrapped.onrender.com", "https://music-rewrapped.onrender.com", "http://localhost:5173"], supports_credentials=True)
     
     #& Init extensions with app context
     db.init_app(app)

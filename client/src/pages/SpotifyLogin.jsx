@@ -48,7 +48,11 @@ const SpotifyLogin = () => {
   }, []);
 
   const handleLogin = () => {
-    window.location.href = `${import.meta.env.VITE_BASE_URL}/auth/login`;
+    const baseUrl = import.meta.env.VITE_BASE_URL || 'https://music-rewrapped.onrender.com';
+    window.location.href = `${baseUrl}/auth/login`;
+    if (import.meta.env.DEV) {
+      console.log(`Redirecting to: ${baseUrl}/auth/login`);
+    }
   };
 
   return (
