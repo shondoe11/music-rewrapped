@@ -14,8 +14,8 @@ load_dotenv(dotenv_path=f".env.{env}")  #~ load appropriate .env file
 #& convert 'CERT_REQUIRED' in REDIS_URL query param to numeric value
 redis_url = os.environ.get('REDIS_URL')
 if redis_url and "ssl_cert_reqs=CERT_REQUIRED" in redis_url:
-    redis_url = redis_url.replace("CERT_REQUIRED", str(ssl.CERT_REQUIRED))
-    #~ overwrite env value w converted URL
+    redis_url = redis_url.replace("CERT_REQUIRED", "required")
+    #~ overwrite env value with converted URL
     os.environ['REDIS_URL'] = redis_url
 
 #& if redis url provided (prod), use it; else fallback dev settings
@@ -33,7 +33,7 @@ if os.environ.get('REDIS_URL'):
         logging.error("Redis connection failed: %s", e)
         raise
     except Exception as e:
-        logging.error("Unexpected error while connecting to redis: %s", e)
+        logging.error("Unexpected error while connecting to Redis: %s", e)
         raise
 else:
     REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
@@ -43,5 +43,5 @@ else:
         host=REDIS_HOST,
         port=REDIS_PORT,
         db=REDIS_DB,
-        decode_responses=True  #~ auto decode strings to utf-8
+        decode_responses=True  #~ auto decode strings to UTF-8
     )
