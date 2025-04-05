@@ -33,7 +33,7 @@ if os.environ.get('REDIS_URL'):
         logging.error("Redis connection failed: %s", e)
         raise
     except Exception as e:
-        logging.error("Unexpected error while connecting to Redis: %s", e)
+        logging.error("Unexpected error while connecting to redis: %s", e)
         raise
 else:
     REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
@@ -43,5 +43,5 @@ else:
         host=REDIS_HOST,
         port=REDIS_PORT,
         db=REDIS_DB,
-        decode_responses=True  #~ auto decode strings to UTF-8
+        decode_responses=True  #~ auto decode strings to utf-8
     )
