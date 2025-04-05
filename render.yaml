@@ -22,7 +22,7 @@ services:
       - key: SPOTIFY_REDIRECT_URI
         value: "https://music-rewrapped.onrender.com/auth/callback"
       - key: CLIENT_HOME_URL
-        value: "https://music-rewrapped.onrender.com/home"
+        value: "https://musicrewrapped.onrender.com/home"
     healthCheckPath: /health
 
   - type: worker
@@ -49,4 +49,4 @@ services:
     plan: standard
     envVars:
       - key: VITE_BASE_URL
-        value: "https://music-rewrapped.onrender.com"
+        value: "https://musicrewrapped.onrender.com"
