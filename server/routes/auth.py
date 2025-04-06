@@ -223,10 +223,14 @@ def refresh_token():
 
 @auth_bp.route('/user', methods=['GET'])
 def get_current_user():
+    #? debugging info fr session issues
     if 'user' in session:
         return jsonify({'user': session['user']})
     else:
-        return jsonify({'error': 'not authenticated'}), 401
+        #? log session keys fr debugging
+        session_keys = list(session.keys()) if session else []
+        print(f"Session keys: {session_keys}")
+        return jsonify({'error': 'not authenticated', 'session_debug': session_keys}), 401
     
 #& Re-Wrapped registration
 @auth_bp.route('/rewrapped/register', methods=['POST', 'OPTIONS'])

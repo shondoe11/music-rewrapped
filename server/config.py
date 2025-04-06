@@ -12,8 +12,9 @@ class Config(object):
 
     SESSION_TYPE = 'redis'
     SESSION_PERMANENT = False
+    #& rm domain restriction allow cross-domain cookies
     SESSION_COOKIE_DOMAIN = None
-    # os.environ.get('SESSION_COOKIE_DOMAIN', '127.0.0.1')
+    SESSION_COOKIE_SAMESITE = 'None'
 
     #& server-side sesh settings
     SESSION_USE_SIGNER = True
@@ -36,7 +37,9 @@ class ProductionConfig(Config):
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
     SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_DOMAIN = os.environ.get("SESSION_COOKIE_DOMAIN", "my-production-domain.com")
+    #& allow cross-domain cookie sharing in prod
+    SESSION_COOKIE_DOMAIN = None
+    SESSION_COOKIE_SAMESITE = 'None'
 
 class TestingConfig(Config):
     TESTING = True

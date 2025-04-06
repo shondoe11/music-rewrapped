@@ -26,8 +26,10 @@ def create_app(config_class=DevelopmentConfig):
     app = Flask(__name__)
     app.config.from_object(config_class)
     
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    #& session cookie settings fr cross-domain auth
+    app.config['SESSION_COOKIE_SAMESITE'] = 'None'
     app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
     Session(app)
     
     CORS(app, origins=["https://musicrewrapped.onrender.com", "https://music-rewrapped.onrender.com", "http://localhost:5173"], supports_credentials=True)
