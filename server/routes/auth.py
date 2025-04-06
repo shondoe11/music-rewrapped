@@ -159,11 +159,15 @@ def callback():
         'followers': user.followers
     }
     
-    client_home_url = os.environ.get('CLIENT_HOME_URL', 'http://localhost:5173/home')
-    if client_home_url.endswith('/'):
-        client_home_url = client_home_url[:-1]
-    print(f"redirecting to: {client_home_url}")  #? debugging
-    return redirect(client_home_url)
+    #&redirect to base url instead of /home path
+    client_base_url = os.environ.get('CLIENT_HOME_URL', 'http://localhost:5173/home')
+    #~ rmf /home frm endpoint
+    if '/home' in client_base_url:
+        client_base_url = client_base_url.replace('/home', '')
+    if client_base_url.endswith('/'):
+        client_base_url = client_base_url[:-1]
+    print(f"redirecting to: {client_base_url}")  #? debugging
+    return redirect(client_base_url)
 
 @auth_bp.route('/refresh-token', methods=['GET'])
 def refresh_token():
