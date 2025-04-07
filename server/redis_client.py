@@ -14,8 +14,9 @@ load_dotenv(dotenv_path=f".env.{env}")  #~ load appropriate .env file
 #& convert 'CERT_REQUIRED' in REDIS_URL query param to numeric value
 redis_url = os.environ.get('REDIS_URL')
 if redis_url and "ssl_cert_reqs=CERT_REQUIRED" in redis_url:
-    redis_url = redis_url.replace("CERT_REQUIRED", "required")
-    #~ overwrite env value with converted URL
+    #~ convert actual ssl.CERT_REQUIRED const (2)
+    redis_url = redis_url.replace("ssl_cert_reqs=CERT_REQUIRED", f"ssl_cert_reqs={ssl.CERT_REQUIRED}")
+    #~ overwrite env value w converted URL
     os.environ['REDIS_URL'] = redis_url
 
 #& if redis url provided (prod), use it; else fallback dev settings
