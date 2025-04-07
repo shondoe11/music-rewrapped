@@ -1,10 +1,16 @@
 from flask import Blueprint, jsonify, request
-from datetime import datetime, timedelta, timezone
+from server.services.analytics_service import (
+    get_listening_trends,
+    get_listening_heatmap,
+    get_genre_distribution,
+    get_artist_genre_matrix
+)
 from server.extensions import db
-from server.model import ListeningHistory, User, SavedEvent, Event
+from server.model import ListeningHistory, SavedEvent, Event, User
 from sqlalchemy import func, desc, and_
-from server.redis_client import redis_client
+from datetime import datetime, timedelta, timezone
 import json
+from server.redis_client import redis_client
 
 home_bp = Blueprint('home', __name__)
 
@@ -14,7 +20,7 @@ def get_time_frame_data(user_id, days):
     """
     #& time frame start date
     start_date = datetime.now(timezone.utc) - timedelta(days=days)
-    
+
     #& top songs query: track grouping (track_id, track_name, artist, artwork_url)
     top_songs_query = (
         db.session.query(
@@ -40,8 +46,8 @@ def get_time_frame_data(user_id, days):
         }
         for row in top_songs_query
     ]
-    
-    #& top artists query: artist group (add fallback for artist artwork not available OR return just name and play_count)
+
+    #& top artists query: artist grouping
     top_artists_query = (
         db.session.query(
             ListeningHistory.artist,
@@ -72,7 +78,6 @@ def get_longest_listening_streak(user_id):
         .filter(ListeningHistory.user_id == user_id).scalar() or 0
     total_tracks = db.session.query(func.count(ListeningHistory.id))\
         .filter(ListeningHistory.user_id == user_id).scalar() or 0
-
     total_minutes = total_duration // 60
 
     #& biggest listening day: group by date (ignore time) and sum durations, then pick max
@@ -157,7 +162,7 @@ def get_top_listeners_percentile(user_id):
         Dictionary containing percentile ranking, favorite artist info, and additional metrics
     """
     try:
-        #& check cache first to avoid expensive recalculation
+        #& check cache 1st
         cache_key = f"top_listener_percentile:{user_id}"
         cached_result = redis_client.get(cache_key)
         if cached_result:
@@ -167,12 +172,8 @@ def get_top_listeners_percentile(user_id):
                 pass  #~ proceed recalculate if cache read fails
         
         now = datetime.now(timezone.utc)
-        
-        #~ weight recent listening more heavily using time-based multipliers
-        recent_period = now - timedelta(days=30)  #~ last 30 days
-        medium_period = now - timedelta(days=90)  #~ last 90 days
-        
-        #~ complex query: find favorite artists w proper time weighting
+
+        #~ determine user's top artists based on listening history
         artist_query = db.session.query(
             ListeningHistory.artist,
             func.count(ListeningHistory.id).label('total_listens'),
@@ -182,24 +183,18 @@ def get_top_listeners_percentile(user_id):
         ).group_by(
             ListeningHistory.artist
         ).order_by(
-            desc('total_listens')  #~ sort by total_listens since weighted_listens no longer exists
-        ).limit(5)  #~ Get top 5 fr more detailed analysis
-        
-        top_artists = artist_query.all()
-        
-        if not top_artists:
-            #~ handle case fr no listening history
+            desc('total_listens')
+        ).limit(5).all()
+
+        if not artist_query:
             return {
                 'percentile_ranking': 0,
                 'favorite_artist': "Unknown Artist",
                 'total_listens': 0,
                 'percentile_confidence': "low"
             }
-        
-        #~ get primary favorite artist (w most weighted listens)
-        favorite_artist_row = top_artists[0]
-        
-        #~ extract primary artist name if multiple artists listed
+
+        favorite_artist_row = artist_query[0]
         favorite_artist_full = favorite_artist_row.artist
         if ',' in favorite_artist_full:
             favorite_artist = favorite_artist_full.split(',')[0].strip()
@@ -208,36 +203,34 @@ def get_top_listeners_percentile(user_id):
         
         #~ get user's raw listen count fr this artist
         user_listen_count = favorite_artist_row.total_listens
-        
-        #~ calculate additional engagement metrics
+
+        #~ calculate saved tracks count fr this artist frm SavedEvent
         saved_tracks_count = db.session.query(func.count(SavedEvent.id)).join(
             Event, SavedEvent.event_id == Event.id
         ).filter(
             and_(
                 SavedEvent.user_id == user_id,
-                Event.target_artist_interest.like(f"%{favorite_artist}%")
+                Event.target_artist_interest.ilike(f"%{favorite_artist}%")
             )
         ).scalar() or 0
-        
+
         #~ query all users who listened to this artist
         all_listeners_query = db.session.query(
             ListeningHistory.user_id,
             func.count(ListeningHistory.id).label('listen_count')
         ).filter(
-            ListeningHistory.artist.like(f"%{favorite_artist}%")
+            ListeningHistory.artist.ilike(f"%{favorite_artist}%")
         ).group_by(
             ListeningHistory.user_id
         ).all()
-        
+
         total_listeners = len(all_listeners_query)
         
         if total_listeners < 10:
-            #~ handle edge case: not enough listeners fr meaningful percentile
             confidence = "low"
             if total_listeners <= 1:
                 percentile = 99  #~ default high percentile if they only listener
             else:
-                #~ simple ranking if very few listeners
                 listen_counts = [row.listen_count for row in all_listeners_query]
                 listen_counts.sort()
                 user_rank = listen_counts.index(user_listen_count) + 1
@@ -255,7 +248,7 @@ def get_top_listeners_percentile(user_id):
                 ).filter(
                     and_(
                         SavedEvent.user_id == other_user_id,
-                        Event.target_artist_interest.like(f"%{favorite_artist}%")
+                        Event.target_artist_interest.ilike(f"%{favorite_artist}%")
                     )
                 ).scalar() or 0
                 
@@ -280,11 +273,9 @@ def get_top_listeners_percentile(user_id):
                         break
                     insertion_point = i + 1
                 user_rank = insertion_point + 1
-            
             percentile = round(((user_rank - 1) / len(engagement_scores)) * 100)
             confidence = "high" if total_listeners > 50 else "medium"
-        
-        #& assemble result w detailed metrics
+
         result = {
             'percentile_ranking': percentile,
             'favorite_artist': favorite_artist,
@@ -294,31 +285,26 @@ def get_top_listeners_percentile(user_id):
             'percentile_confidence': confidence,
             'additional_favorites': [
                 {
-                    'artist': artist.artist.split(',')[0].strip() if ',' in artist.artist else artist.artist,
-                    'listens': artist.total_listens
-                } for artist in top_artists[1:5] if artist
+                    'artist': row.artist.split(',')[0].strip() if ',' in row.artist else row.artist,
+                    'listens': row.total_listens
+                } for row in artist_query[1:5] if row
             ]
         }
-        
-        #& cache result fr 24 hours to improve performance
-        try:
-            redis_client.setex(
-                cache_key,
-                timedelta(hours=24), 
-                json.dumps(result)
-            )
-        except Exception:
-            pass  #~ continue even if caching fails
-        
+
+        #& update redis cache only if result changed; use TTL 7 days
+        if cached_result:
+            try:
+                if json.loads(cached_result) == result:
+                    return result
+            except Exception:
+                pass
+        redis_client.setex(cache_key, timedelta(days=7), json.dumps(result))
         return result
-        
     except Exception as e:
-        print(f"exception in get_top_listeners_percentile: {e}")
-        import traceback
-        traceback.print_exc()
+        print("exception in get_top_listeners_percentile:", e)
         return {
             'percentile_ranking': 0,
-            'favorite_artist': "Unknown (Error Occurred)",
+            'favorite_artist': "unknown (error occurred)",
             'total_listens': 0,
             'percentile_confidence': "error"
         }
@@ -326,7 +312,7 @@ def get_top_listeners_percentile(user_id):
 @home_bp.route('/data', methods=['GET'])
 def home_data():
     """
-    API Endpoint to return real aggregated data for Home pg
+    API Endpoint to return aggregated data for Home pg
     """
     user_id = request.args.get('user_id')
     if not user_id:
@@ -349,14 +335,14 @@ def home_data():
         '6_months': 180,
         '1_year': 365
     }
-    
+
     top_songs = {}
     top_artists = {}
     for label, days in time_frames.items():
         songs, artists = get_time_frame_data(user_id, days)
         top_songs[label] = songs
         top_artists[label] = artists
-        
+
     longest_streak = get_longest_listening_streak(user_id)
     favorite_genres = get_favorite_genres_evolution(user_id)
     top_listeners = {

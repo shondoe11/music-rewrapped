@@ -21,7 +21,6 @@ def fetch_listening_history(user_id):
             user_expires_at = user.expires_at.replace(tzinfo=timezone.utc)
         else:
             user_expires_at = user.expires_at
-
         current_time = datetime.now(timezone.utc)
         if current_time > user_expires_at:
             #~ refresh token via helper task
@@ -40,6 +39,27 @@ def fetch_listening_history(user_id):
 
     history_data = response.json().get('items', [])
 
+    #& begin batch caching of artist genres
+    distinct_artist_ids = set()
+    for item in history_data:
+        track = item.get('track', {})
+        if track.get('artists'):
+            primary_artist = track['artists'][0]
+            artist_id = primary_artist.get('id')
+            if artist_id:
+                distinct_artist_ids.add(artist_id)
+    #~ build keys + perform single mget req
+    cached_keys = [f'artist_genre:{artist_id}' for artist_id in distinct_artist_ids]
+    cached_values = redis_client.mget(cached_keys)
+    artist_genre_cache = {}
+    for i, key in enumerate(cached_keys):
+        #~ store cached value fr this artist id
+        artist_id = key.split(':')[1]
+        artist_genre_cache[artist_id] = cached_values[i]
+    #~ init pipeline to batch writes fr missing keys
+    pipeline = redis_client.pipeline()
+    #~ end batch caching
+
     for item in history_data:
         track = item.get('track', {})
         try:
@@ -51,21 +71,21 @@ def fetch_listening_history(user_id):
         if track.get('artists'):
             primary_artist = track['artists'][0]
             artist_id = primary_artist.get('id')
-            #~ try get genre info frm redis cache 1st
-            genres = redis_client.get(f'artist_genre:{artist_id}')
-            if genres is None:
-                artist_url = f'https://api.spotify.com/v1/artists/{artist_id}'
-                artist_response = requests.get(artist_url, headers=headers)
-                if artist_response.status_code == 200:
-                    artist_data = artist_response.json()
-                    genres_list = artist_data.get('genres', [])
-                    try:
-                        genres = ', '.join(genres_list)
-                    except Exception:
-                        genres = ''
-                    #~ cache genre info redis, expire 1 day
-                    redis_client.setex(f'artist_genre:{artist_id}', timedelta(days=1), genres)
-
+            if artist_id:
+                genres = artist_genre_cache.get(artist_id)
+                if genres is None:
+                    artist_url = f'https://api.spotify.com/v1/artists/{artist_id}'
+                    artist_response = requests.get(artist_url, headers=headers)
+                    if artist_response.status_code == 200:
+                        artist_data = artist_response.json()
+                        genres_list = artist_data.get('genres', [])
+                        try:
+                            genres = ', '.join(genres_list)
+                        except Exception:
+                            genres = ''
+                        #~ update local cache + queue setex call via pipeline
+                        artist_genre_cache[artist_id] = genres
+                        pipeline.setex(f'artist_genre:{artist_id}', timedelta(days=1), genres)
         new_history = ListeningHistory(
             user_id=user.id,
             track_id=track.get('id'),
@@ -77,7 +97,7 @@ def fetch_listening_history(user_id):
             played_at=played_at
         )
         db.session.add(new_history)
-
+    pipeline.execute()
     db.session.commit()
     return {'message': 'listening history synced successfully'}
 
@@ -133,18 +153,15 @@ def aggregate_listening_history_task(user_id):
         }
         for row in top_artists_query
     ]
-
-    agg_stats = AggregatedStats.query.filter_by(user_id=user.id).first()
+    agg_stats = AggregatedStats.query.filter_by(user_id=user_id).first()
     if not agg_stats:
-        agg_stats = AggregatedStats(user_id=user.id)
+        agg_stats = AggregatedStats(user_id=user_id)
         db.session.add(agg_stats)
-
     agg_stats.top_tracks = top_tracks
     agg_stats.top_artists = top_artists
     #todo: further aggregation, e.g. genre_distribution, can be added here
     agg_stats.updated_at = datetime.now(timezone.utc)
     db.session.commit()
-
     return {'message': 'aggregated stats updated successfully', 'aggregated_stats': {
         'top_tracks': top_tracks,
         'top_artists': top_artists
@@ -153,7 +170,6 @@ def aggregate_listening_history_task(user_id):
 @shared_task
 def sync_all_users():
     db.engine.dispose()
-    #~ loop through all users (for production, you might want to limit to active users)
     from server.model import User
     users = User.query.all()
     for user in users:
@@ -164,12 +180,12 @@ def sync_all_users():
 
 @shared_task
 def fetch_recent_played_all_users():
-    db.engine.dispose() 
+    db.engine.dispose()
     from server.model import User
     users = User.query.filter_by(store_listening_history=True).all()
     for user in users:
         fetch_listening_history.delay(user.id)
-    return {'message': f'Recently played fetch triggered for {len(users)} users'}
+    return {'message': f'recently played fetch triggered for {len(users)} users'}
 
 @shared_task
 def update_event_statuses():
@@ -194,4 +210,4 @@ def update_event_statuses():
             event.status = new_status
             updated_count += 1
     db.session.commit()
-    return f"Updated {updated_count} event statuses at {now}"
+    return f"updated {updated_count} event statuses at {now}"
