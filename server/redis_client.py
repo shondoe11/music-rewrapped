@@ -11,22 +11,37 @@ logging.basicConfig(level=logging.INFO)
 env = os.environ.get('FLASK_ENV', 'development')
 load_dotenv(dotenv_path=f".env.{env}")  #~ load appropriate .env file
 
-#& convert 'CERT_REQUIRED' in REDIS_URL query param to numeric value
+#& handle redis SSL cert reqs
 redis_url = os.environ.get('REDIS_URL')
+ssl_cert_reqs = None
+
+#& extract ssl param & pass as connection param later
 if redis_url and "ssl_cert_reqs=CERT_REQUIRED" in redis_url:
-    #~ convert actual ssl.CERT_REQUIRED const (2)
-    redis_url = redis_url.replace("ssl_cert_reqs=CERT_REQUIRED", f"ssl_cert_reqs={ssl.CERT_REQUIRED}")
-    #~ overwrite env value w converted URL
+    #~ remove problem param frm URL
+    redis_url = redis_url.replace("ssl_cert_reqs=CERT_REQUIRED", "")
+    #~ URL cleanup: remove trailing chars
+    redis_url = redis_url.replace("&&", "&").rstrip("&?")
+    #~ set ssl cert requirement explicitly
+    ssl_cert_reqs = ssl.CERT_REQUIRED
+    #~ update env
     os.environ['REDIS_URL'] = redis_url
 
 #& if redis url provided (prod), use it; else fallback dev settings
 if os.environ.get('REDIS_URL'):
     try:
+        connection_kwargs = {
+            'decode_responses': True,
+            'socket_timeout': 5,
+            'socket_connect_timeout': 5
+        }
+        
+        #& only add ssl params if need
+        if ssl_cert_reqs is not None:
+            connection_kwargs['ssl_cert_reqs'] = ssl_cert_reqs
+            
         redis_client = redis.Redis.from_url(
             os.environ.get('REDIS_URL'),
-            decode_responses=True,
-            socket_timeout=5,
-            socket_connect_timeout=5
+            **connection_kwargs
         )
         redis_client.ping()
         logging.info("Redis connection successful.")
