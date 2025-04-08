@@ -10,7 +10,7 @@ from server.model import ListeningHistory, SavedEvent, Event, User
 from sqlalchemy import func, desc, and_
 from datetime import datetime, timedelta, timezone
 import json
-from server.redis_client import redis_client
+from server.redis_client import redis_client, get_cached, set_cached, redis_cache, batch_get
 
 home_bp = Blueprint('home', __name__)
 
@@ -162,14 +162,11 @@ def get_top_listeners_percentile(user_id):
         Dictionary containing percentile ranking, favorite artist info, and additional metrics
     """
     try:
-        #& check cache 1st
+        #& check cache 1st - using local+redis caching system
         cache_key = f"top_listener_percentile:{user_id}"
-        cached_result = redis_client.get(cache_key)
+        cached_result = get_cached(cache_key)
         if cached_result:
-            try:
-                return json.loads(cached_result)
-            except Exception:
-                pass  #~ proceed recalculate if cache read fails
+            return cached_result  #~ now handles json parsing internally
         
         now = datetime.now(timezone.utc)
 
@@ -292,13 +289,8 @@ def get_top_listeners_percentile(user_id):
         }
 
         #& update redis cache only if result changed; use TTL 7 days
-        if cached_result:
-            try:
-                if json.loads(cached_result) == result:
-                    return result
-            except Exception:
-                pass
-        redis_client.setex(cache_key, timedelta(days=7), json.dumps(result))
+        #~ use set_cached which handles both local & redis caching
+        set_cached(cache_key, result, ex=timedelta(days=7))
         return result
     except Exception as e:
         print("exception in get_top_listeners_percentile:", e)

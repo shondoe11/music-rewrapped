@@ -73,9 +73,14 @@ def create_app(config_class=DevelopmentConfig):
             db.session.execute(text('SELECT 1'))
         except Exception as e:
             return jsonify({'status': 'error', 'component': 'database', 'error': str(e)}), 500
-        #~ check redis connectivity
+        #~ check redis connectivity - w throttling
         try:
-            redis_client.ping()
+            #~ use cache to limit redis pings to 1x / min
+            cache_key = "health_check_ping"
+            last_ping = redis_client.get(cache_key)
+            if not last_ping:
+                redis_client.ping()
+                redis_client.setex(cache_key, 60, "1")  #~ cache fr 60s
         except Exception as e:
             return jsonify({'status': 'error', 'component': 'redis', 'error': str(e)}), 500
 

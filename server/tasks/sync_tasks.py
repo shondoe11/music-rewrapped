@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import func
 from server.extensions import db
 from server.model import ListeningHistory, AggregatedStats, Event, User
-from server.redis_client import redis_client
+from server.redis_client import redis_client, batch_get, set_cached
 from server.tasks.auth_tasks import refresh_user_token
 
 @shared_task
@@ -48,9 +48,9 @@ def fetch_listening_history(user_id):
             artist_id = primary_artist.get('id')
             if artist_id:
                 distinct_artist_ids.add(artist_id)
-    #~ build keys + perform single mget req
+    #~ build keys + perform single mget req using batch_get utility
     cached_keys = [f'artist_genre:{artist_id}' for artist_id in distinct_artist_ids]
-    cached_values = redis_client.mget(cached_keys)
+    cached_values = batch_get(cached_keys)  #~ use local cache where possible bef Redis
     artist_genre_cache = {}
     for i, key in enumerate(cached_keys):
         #~ store cached value fr this artist id
@@ -85,7 +85,8 @@ def fetch_listening_history(user_id):
                             genres = ''
                         #~ update local cache + queue setex call via pipeline
                         artist_genre_cache[artist_id] = genres
-                        pipeline.setex(f'artist_genre:{artist_id}', timedelta(days=1), genres)
+                        #~ using set_cached to update both local & redis caches
+                        set_cached(f'artist_genre:{artist_id}', genres, ex=timedelta(days=1))
         new_history = ListeningHistory(
             user_id=user.id,
             track_id=track.get('id'),
