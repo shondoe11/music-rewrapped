@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { getAccessToken } from '../utils/spotifyApi';
+import { getCurrentUser } from '../api';
 
 const UserContext = createContext(null);
 
@@ -11,16 +11,12 @@ export const UserProvider = ({ children }) => {
         const fetchUserProfile = async () => {
         try {
             setLoading(true);
-            const response = await fetch('https://api.spotify.com/v1/me', {
-            headers: {
-                Authorization: `Bearer ${getAccessToken()}`
+            //~ use existing API function to get user data
+            const response = await getCurrentUser();
+            if (response && response.user) {
+            localStorage.setItem('userProfile', JSON.stringify(response.user));
+            setUser(response.user);
             }
-            });
-            
-            if (!response.ok) throw new Error('Failed to fetch user profile');
-            const data = await response.json();
-            localStorage.setItem('userProfile', JSON.stringify(data));
-            setUser(data);
         } catch (error) {
             console.error('Error fetching user profile:', error);
             //~ fallback to localStorage
@@ -33,15 +29,11 @@ export const UserProvider = ({ children }) => {
         }
         };
 
-        if (getAccessToken()) {
         fetchUserProfile();
-        } else {
-        setLoading(false);
-        }
     }, []);
 
     return (
-        <UserContext.Provider value={{ user, loading, setUser }}>
+        <UserContext.Provider value={{ spotifyUser: user, spotifyLoading: loading }}>
         {children}
         </UserContext.Provider>
     );
