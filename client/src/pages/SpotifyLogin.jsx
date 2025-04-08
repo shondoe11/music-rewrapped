@@ -8,15 +8,36 @@ import RotatingText from "../styles/text-animations/RotatingText";
 import GradientText from "../styles/text-animations/GradientText";
 import Crosshair from "../styles/animations/Crosshair";
 import SplashCursor from "../styles/animations/SplashCursor";
+import { useAuth } from "../hooks/useAuth";
 
 const SpotifyLogin = () => {
   const navigate = useNavigate();
+  const { login, storeToken } = useAuth();
   const containerRef = useRef(null);
   const buttonRef = useRef(null);
   const learnMoreTextRef = useRef(null);
   const [showCrosshair, setShowCrosshair] = useState(false);
 
   useEffect(() => {
+    //& check fr token in URL params (frm OAuth redirect)
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    
+    if (token) {
+      //~ store token w cross-browser compatibility
+      storeToken(token);
+      
+      //~ clean URL by removing token
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      //~ smol delay ensure token is stored bef checking auth
+      setTimeout(() => {
+        checkAuth();
+      }, 300);
+    } else {
+      checkAuth();
+    }
+    
     async function checkAuth() {
       try {
         const response = await getCurrentUser();
@@ -29,8 +50,7 @@ const SpotifyLogin = () => {
         console.error("failed to fetch user:", err);
       }
     }
-    checkAuth();
-  }, [navigate]);
+  }, [navigate, storeToken]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -49,6 +69,10 @@ const SpotifyLogin = () => {
 
   const handleLogin = () => {
     const baseUrl = import.meta.env.VITE_BASE_URL || 'https://music-rewrapped.onrender.com';
+    
+    //& store current origin to help w cross-browser redirects
+    sessionStorage.setItem('auth_origin', window.location.origin);
+    
     window.location.href = `${baseUrl}/auth/login`;
     if (import.meta.env.DEV) {
       console.log(`Redirecting to: ${baseUrl}/auth/login`);

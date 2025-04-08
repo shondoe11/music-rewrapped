@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 import logging
+from datetime import timedelta
 logging.basicConfig(level=logging.DEBUG)
 
 #& determine env based on 'FLASK_DEBUG';
@@ -25,15 +26,20 @@ socketio = SocketIO(cors_allowed_origins='*')
 def create_app(config_class=DevelopmentConfig):
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
+
     #& session cookie settings fr cross-domain auth
-    app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
     app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=1)  #~ explicit session lifetime
     Session(app)
-    
-    CORS(app, origins=["https://musicrewrapped.onrender.com", "https://music-rewrapped.onrender.com", "http://localhost:5173"], supports_credentials=True)
-    
+
+    #& CORS config fr cross-browser compatibility
+    CORS(app,
+            origins=["https://musicrewrapped.onrender.com", "https://music-rewrapped.onrender.com", "http://localhost:5173"],
+            supports_credentials=True,
+            expose_headers=["Content-Type", "Authorization"])
+
     #& Init extensions with app context
     db.init_app(app)
     migrate.init_app(app, db)  #~ hook Flask-Migrate to app
@@ -57,7 +63,7 @@ def create_app(config_class=DevelopmentConfig):
     @app.route('/')
     def index():
         return 'Hello, Music Re-Wrapped!'
-    
+
     #& health-check endpoint verify db & redis connectivity
     @app.route('/health')
     def health_check():
@@ -74,7 +80,7 @@ def create_app(config_class=DevelopmentConfig):
             return jsonify({'status': 'error', 'component': 'redis', 'error': str(e)}), 500
 
         return jsonify({'status': 'ok'}), 200
-        
+
     return app
 
 app = create_app()

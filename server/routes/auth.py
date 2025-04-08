@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, redirect, session
+from flask import Blueprint, jsonify, request, redirect, session, make_response
 import secrets  #& generate random state
 import os
 import urllib.parse
@@ -28,6 +28,19 @@ SCOPES = 'user-read-recently-played user-top-read playlist-read-private playlist
 
 #& sign and validate state parameter
 serializer = URLSafeTimedSerializer(os.environ.get('SECRET_KEY', 'default-secret-key'))
+
+#& helper fr cross-browser token storage
+def set_auth_cookies(response, token):
+    """Set auth token in a browser-compatible way"""
+    response.set_cookie(
+        'jwt_token',
+        token,
+        max_age=86400,  #~ 24 hrs
+        httponly=True,
+        secure=os.environ.get('FLASK_ENV') == 'production',
+        samesite='Lax'  #! impt fr Firefox/Safari during redirects
+    )
+    return response
 
 @auth_bp.route('/login', methods=['GET'])
 def login():
@@ -147,7 +160,7 @@ def callback():
         db.session.add(user)
     db.session.commit()
     
-    session['user'] = {
+    user_data = {
         'id': user.id,
         'spotify_id': user.spotify_id,
         'email': user.email,
@@ -159,24 +172,48 @@ def callback():
         'followers': user.followers
     }
     
-    #&redirect to base url instead of /home path
+    session['user'] = user_data
+    
+    #& generate JWT token fr cross-browser compatibility
+    jwt_payload = {
+        'user_id': user.id,
+        'exp': datetime.now(timezone.utc) + timedelta(days=1)
+    }
+    jwt_token = jwt.encode(jwt_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+    #& redirect base url instead /home path
     client_base_url = os.environ.get('CLIENT_HOME_URL', 'http://localhost:5173/home')
     #~ rmf /home frm endpoint
     if '/home' in client_base_url:
         client_base_url = client_base_url.replace('/home', '')
     if client_base_url.endswith('/'):
         client_base_url = client_base_url[:-1]
-    print(f"redirecting to: {client_base_url}")  #? debugging
-    return redirect(client_base_url)
+    
+    #& add token to redirect URL fr cross-browser compatibility
+    redirect_url = f"{client_base_url}/spotify-login?token={jwt_token}"
+    
+    print(f"redirecting to: {redirect_url}")  #? debugging
+    
+    #~ res w secure cookie settings
+    response = redirect(redirect_url)
+    return set_auth_cookies(response, jwt_token)
 
 @auth_bp.route('/refresh-token', methods=['GET'])
 def refresh_token():
     #& user tokens validation and update in db via jwt auth
     #~ extract jwt from auth header
+    token = None
     auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer'):
-        return jsonify({'error': 'auth header missing / invalid'}), 401
-    token = auth_header.split(' ')[1]
+    if auth_header and auth_header.startswith('Bearer'):
+        token = auth_header.split(' ')[1]
+    
+    #~ fallback to cookie if header nt found
+    if not token:
+        token = request.cookies.get('jwt_token')
+    
+    if not token:
+        return jsonify({'error': 'auth token missing'}), 401
+        
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = payload.get('user_id')
@@ -215,22 +252,63 @@ def refresh_token():
     }
     new_jwt_token = jwt.encode(new_jwt_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-    return jsonify({
+    #~ res w token info
+    response = jsonify({
         'message': 'token refreshed successfully',
         'new_token_info': new_token_info,
         'jwt': new_jwt_token
     })
+    
+    #~ update cookie w new token
+    return set_auth_cookies(response, new_jwt_token)
 
 @auth_bp.route('/user', methods=['GET'])
 def get_current_user():
-    #? debugging info fr session issues
+    #~ check session 1st
     if 'user' in session:
         return jsonify({'user': session['user']})
-    else:
-        #? log session keys fr debugging
-        session_keys = list(session.keys()) if session else []
-        print(f"Session keys: {session_keys}")
-        return jsonify({'error': 'not authenticated', 'session_debug': session_keys}), 401
+
+    #~ if nt in session, check JWT token frm various sources
+    token = None
+
+    #~ check auth header
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+
+    #~ check cookies if nt found in header
+    if not token and request.cookies.get('jwt_token'):
+        token = request.cookies.get('jwt_token')
+
+    if token:
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            user_id = payload.get('user_id')
+            user = User.query.get(user_id)
+
+            if user:
+                user_data = {
+                    'id': user.id,
+                    'spotify_id': user.spotify_id,
+                    'email': user.email,
+                    'display_name': user.display_name,
+                    'role': user.role,
+                    'username': user.username if user.username else None,
+                    'profile_image_url': user.profile_image_url,
+                    'country': user.country,
+                    'followers': user.followers
+                }
+
+                #~ update session fr future reqs
+                session['user'] = user_data
+                return jsonify({'user': user_data})
+        except Exception as e:
+            print(f"JWT validation error: {e}")
+
+    #? log session keys fr debugging
+    session_keys = list(session.keys()) if session else []
+    print(f"Session keys: {session_keys}")
+    return jsonify({'error': 'not authenticated', 'session_debug': session_keys}), 401
     
 #& Re-Wrapped registration
 @auth_bp.route('/rewrapped/register', methods=['POST', 'OPTIONS'])
@@ -265,6 +343,34 @@ def rewrapped_register():
 
     #~ get current user frm sesh
     user_info = session.get('user')
+    
+    #~ also check fr JWT token in cookie / header if session empty
+    token = None
+    if not user_info:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+        
+        if not token:
+            token = request.cookies.get('jwt_token')
+            
+        if token:
+            try:
+                payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+                user_id = payload.get('user_id')
+                user = User.query.get(user_id)
+                if user:
+                    user_info = {
+                        'id': user.id,
+                        'spotify_id': user.spotify_id,
+                        'email': user.email,
+                        'display_name': user.display_name,
+                        'role': user.role,
+                        'username': user.username
+                    }
+            except Exception as e:
+                print(f"JWT validation error during registration: {e}")
+    
     if user_info and user_info.get('id'):
         user_id = user_info.get('id')
         user = User.query.get(user_id)
@@ -277,7 +383,7 @@ def rewrapped_register():
         user.store_listening_history = store_history
         db.session.commit()
         #~ update session data with the new user info
-        session['user'] = {
+        user_data = {
             'id': user.id,
             'spotify_id': user.spotify_id,
             'email': user.email,
@@ -288,7 +394,18 @@ def rewrapped_register():
             'country': user.country,
             'followers': user.followers
         }
-        return jsonify({'message': 'Registration successful, user upgraded', 'user': session['user']}), 200
+        session['user'] = user_data
+        response = jsonify({'message': 'Registration successful, user upgraded', 'user': user_data})
+        
+        #~ generate new JWT token
+        jwt_payload = {
+            'user_id': user.id,
+            'exp': datetime.now(timezone.utc) + timedelta(days=1)
+        }
+        jwt_token = jwt.encode(jwt_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+        
+        #~ set cookie
+        return set_auth_cookies(response, jwt_token)
     else:
         #~ oauth user sesh case handling
         new_user = User(
@@ -296,14 +413,14 @@ def rewrapped_register():
             role=role_choice,
             store_listening_history=store_history,
             email="",  #~ optional; require email if needed
-            spotify_id="",  #~ may be blank for non-oauth user
+            spotify_id="",  #~ may be blank fr non-oauth user
             display_name=username
         )
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
-        #~ update session data with the new user info
-        session['user'] = {
+        #~ update session data w new user info
+        user_data = {
             'id': new_user.id,
             'spotify_id': new_user.spotify_id,
             'email': new_user.email,
@@ -314,7 +431,17 @@ def rewrapped_register():
             'country': new_user.country,
             'followers': new_user.followers
         }
-        return jsonify({'message': 'Registration successful, new user created', 'user': session['user']}), 201
+        session['user'] = user_data
+        
+        response = jsonify({'message': 'Registration successful, new user created', 'user': user_data})
+        
+        jwt_payload = {
+            'user_id': new_user.id,
+            'exp': datetime.now(timezone.utc) + timedelta(days=1)
+        }
+        jwt_token = jwt.encode(jwt_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+        return set_auth_cookies(response, jwt_token)
 
 #& Re-Wrapped login
 @auth_bp.route('/rewrapped/login', methods=['POST'])
@@ -335,7 +462,7 @@ def rewrapped_login():
         return jsonify({'error': 'Invalid credentials'}), 401
 
     #& set session user info with relevant details
-    session['user'] = {
+    user_data = {
         'id': user.id,
         'spotify_id': user.spotify_id,
         'email': user.email,
@@ -343,12 +470,17 @@ def rewrapped_login():
         'role': user.role,
         'username': user.username
     }
-    #& maybe generate JWT token / set up sesh
-    return jsonify({'message': 'Login successful', 'user': {
-        'id': user.id,
-        'username': user.username,
-        'role': user.role
-    }}), 200
+    session['user'] = user_data
+    
+    jwt_payload = {
+        'user_id': user.id,
+        'exp': datetime.now(timezone.utc) + timedelta(days=1)
+    }
+    jwt_token = jwt.encode(jwt_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    
+    response = jsonify({'message': 'Login successful', 'user': user_data})
+    
+    return set_auth_cookies(response, jwt_token)
 
 #& profile: change pw
 @auth_bp.route('/change-password', methods=['POST', 'OPTIONS'])
@@ -479,9 +611,13 @@ def delete_account():
                 'followers': user.followers
             }
         
-        return jsonify({
+        #~ clear auth cookies
+        response = jsonify({
             'message': 'Account reset successfully. Your listening history has been deleted, and your account has been reset to guest status.'
-        }), 200
+        })
+        response.delete_cookie('jwt_token')
+        
+        return response, 200
     except Exception as e:
         db.session.rollback()
         print(f"Error during account deletion: {str(e)}")
@@ -491,4 +627,6 @@ def delete_account():
 @auth_bp.route('/logout', methods=['POST'])
 def logout_route():
     session.clear()
-    return jsonify({'message': 'Logged out successfully'}), 200
+    response = jsonify({'message': 'Logged out successfully'})
+    response.delete_cookie('jwt_token')
+    return response, 200

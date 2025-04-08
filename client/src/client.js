@@ -2,6 +2,25 @@ import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
+//& cross-browser token retrieval function
+const getToken = () => {
+    //~ try localStorage 1st
+    let token = localStorage.getItem('jwt_token');
+
+    //~ if nt found, try sessionStorage
+    if (!token) {
+        token = sessionStorage.getItem('jwt_token');
+    }
+
+    //~ finally try cookies (fr Safari/Firefox)
+    if (!token) {
+        const match = document.cookie.match(new RegExp('(^| )jwt_token=([^;]+)'));
+        if (match) token = match[2];
+    }
+
+    return token;
+};
+
 //& axios instance w default config fr consistent usage
 const apiClient = axios.create({
     baseURL: BASE_URL,
@@ -15,10 +34,10 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
     config => {
         //~ auth headers
-        // const token = localStorage.getItem('jwt_token');
-        // if (token) {
-        //     config.headers.Authorization = `Bearer ${token}`;
-        // }
+        const token = getToken(); //~ cross-browser compatible method
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
 
         return config;
     },
