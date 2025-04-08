@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { AuthContext } from "./AuthContext";
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = ({ children, initialToken }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   //& store token w cross-browser compatibility
   const storeToken = (token) => {
@@ -37,25 +38,58 @@ export const AuthProvider = ({ children }) => {
     return token;
   };
 
+  //& decode JWT & fetch user info
+  const fetchUserFromToken = (token) => {
+    if (!token) return false;
+    
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const { user_id, exp } = JSON.parse(jsonPayload);
+      
+      //~ check if token expired
+      if (exp && exp * 1000 < Date.now()) {
+        console.warn('JWT token expired');
+        return false;
+      }
+      
+      //~ set user frm decoded payload
+      setUser({ id: user_id });
+      return true;
+    } catch (err) {
+      console.error("Invalid JWT token:", err);
+      return false;
+    }
+  };
+
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(
-          atob(base64)
-            .split('')
-            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-            .join('')
-        );
-        const decodedUser = JSON.parse(jsonPayload);
-        setUser(decodedUser);
-      } catch (err) {
-        console.error("Invalid JWT token:", err);
+    //& handle token during mount or when initialToken changes
+    if (initialToken) {
+      //~ token was explicitly passed (frm URL extraction)
+      console.log('Processing initialToken from URL');
+      const success = fetchUserFromToken(initialToken);
+      
+      if (success) {
+        console.log('Successfully authenticated with token from URL');
+      } else {
+        console.error('Failed to authenticate with token from URL');
+      }
+    } else {
+      //~ check fr stored token
+      const token = getToken();
+      if (token) {
+        fetchUserFromToken(token);
       }
     }
-  }, []); //~ run only once on mount
+    
+    setLoading(false);
+  }, [initialToken]);
 
   const login = (userData, token) => {
     if (token) {
@@ -72,7 +106,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, storeToken, getToken }}>
+    <AuthContext.Provider value={{ user, login, logout, storeToken, getToken, loading }}>
       {children}
     </AuthContext.Provider>
   );

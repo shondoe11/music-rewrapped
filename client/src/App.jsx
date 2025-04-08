@@ -17,7 +17,19 @@ const RootRedirect = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    if (user) {
+    //& delay navigation to allow JWT processing
+    const hasTokenParam = window.location.search.includes('token=');
+    
+    //~ if token in URL, wait briefly fr processing
+    if (hasTokenParam) {
+      console.log('Token detected in URL, processing authentication');
+      //~ short delay to allow token processing
+      setTimeout(() => {
+        if (user) {
+          navigate('/home');
+        }
+      }, 500);
+    } else if (user) {
       navigate('/home');
     } else {
       navigate('/spotify-login');

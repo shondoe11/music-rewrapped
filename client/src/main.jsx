@@ -12,6 +12,39 @@ import { Bounce, Flip, Slide, ToastContainer, Zoom } from 'react-toastify';
 import ClickSpark from './styles/animations/ClickSpark.jsx';
 import { isSafari, isFirefox, applyCompatibilityClasses } from './utils/browserDetection';
 
+//& extract token frm URL params
+const extractAndStoreToken = () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  
+  if (token) {
+    console.log('Token found in URL, storing it');
+    //~ store in multiple places fr cross-browser compatibility
+    try {
+      //~ local storage (primary)
+      localStorage.setItem('jwt_token', token);
+      
+      //~ session storage (fallback)
+      sessionStorage.setItem('jwt_token', token);
+      
+      //~ cookie (for safari/firefox)
+      document.cookie = `jwt_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+      
+      //~ clean URL to rmv token param
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+      
+      return token;
+    } catch (error) {
+      console.error('Error storing token:', error);
+    }
+  }
+  return null;
+};
+
+//& extract token before rendering
+const extractedToken = extractAndStoreToken();
+
 //& browser compatibility classes to root element
 document.addEventListener('DOMContentLoaded', () => {
   applyCompatibilityClasses(document.documentElement);
@@ -36,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-//& Browser feature detection & fallbacks
+//& browser feature detection & fallbacks
 const applyFeatureDetection = () => {
   //~ check backdrop-filter support
   if (!('backdropFilter' in document.documentElement.style) && 
@@ -63,7 +96,7 @@ createRoot(document.getElementById('root')).render(
       sparkCount={12}
       duration={500}
     >
-      <AuthProvider>
+      <AuthProvider initialToken={extractedToken}>
         <App />
         <ToastContainer
           position="top-center"
