@@ -95,11 +95,11 @@ const Home = () => {
               delay={50}
               animateBy="letters"
               direction="top"
-              className="text-7xl font-bold"
+              className="text-4xl md:text-5xl lg:text-7xl font-bold"
               suffix={
                 <span className="inline-flex items-center justify-center relative">
-                  <div className="w-10 h-10 bg-green-500 rounded-full absolute opacity-20 animate-ping"></div>
-                  <div className="w-4 h-4 bg-green-500 rounded-full relative"></div>
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-green-500 rounded-full absolute opacity-20 animate-ping"></div>
+                  <div className="w-3 h-3 md:w-4 md:h-4 bg-green-500 rounded-full relative"></div>
                 </span>
               }
               suffixDelay={300}
@@ -107,7 +107,7 @@ const Home = () => {
           </div>
           <SplitText
             text={greetingText}
-            className="text-5xl font-semibold"
+            className="text-3xl md:text-4xl lg:text-5xl font-semibold"
             delay={200}
             animationFrom={{ opacity: 0, transform: 'translate3d(0,30px,0)' }}
             animationTo={{ opacity: 1, transform: 'translate3d(0,0,0)' }}
@@ -121,7 +121,7 @@ const Home = () => {
               delay={30}
               animateBy="words"
               direction="top"
-              className="text-xl mb-4"
+              className="text-base md:text-lg lg:text-xl mb-4"
               threshold={0.05}
             />
             <BlurText

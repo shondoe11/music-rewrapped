@@ -15,12 +15,12 @@ const TimeRangeSelector = ({ selectedValue, onChange, className = '' }) => {
   ];
 
   return (
-    <div className={`flex rounded-lg bg-gray-100/10 backdrop-blur-sm border border-gray-300/20 overflow-hidden ${className}`}>
+    <div className={`flex w-full md:w-auto rounded-lg bg-gray-100/10 backdrop-blur-sm border border-gray-300/20 overflow-hidden ${className}`}>
       {timeRanges.map((range) => (
         <button
           key={range.value}
           onClick={() => onChange({ target: { value: range.value } })}
-          className={`px-3 py-1 text-xs transition-all duration-300 ${
+          className={`flex-1 md:flex-none px-3 py-2 text-sm md:text-base transition-all duration-300 ${
             selectedValue === range.value
               ? 'bg-gray-800/60 text-green-500 font-semibold' 
               : 'text-gray-400 hover:text-white'
@@ -36,11 +36,11 @@ const TimeRangeSelector = ({ selectedValue, onChange, className = '' }) => {
 const RefreshButton = ({ onClick }) => (
   <button
     onClick={onClick}
-    className="p-2 bg-gray-100/10 backdrop-blur-sm hover:bg-gray-800/50 text-gray-400 hover:text-green-500 rounded-full flex items-center justify-center transition-all duration-300 border border-gray-300/20"
+    className="p-3 bg-gray-100/10 backdrop-blur-sm hover:bg-gray-800/50 text-gray-400 hover:text-green-500 rounded-full flex items-center justify-center transition-all duration-300 border border-gray-300/20"
     aria-label="Refresh recently played tracks"
     title="Refresh recently played tracks"
   >
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
     </svg>
   </button>
@@ -206,10 +206,12 @@ const Dashboard = ({ userId }) => {
       <section className="mt-32 mb-32">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div className="group relative inline-block">
-            <h2 className="text-4xl font-semibold">Recently Played</h2>
+            <h2 className="text-3xl md:text-4xl font-semibold">Recently Played</h2>
             <span className="absolute left-0 -bottom-1 block h-0.5 bg-green-500 w-0 group-hover:w-full transition-all duration-300"></span>
           </div>
-          <RefreshButton onClick={handleRefreshRecentlyPlayed} />
+          <div className="self-end">
+            <RefreshButton onClick={handleRefreshRecentlyPlayed} />
+          </div>
         </div>
         <RecentlyPlayedTracks tracks={recentlyPlayed} />
       </section>
@@ -218,13 +220,15 @@ const Dashboard = ({ userId }) => {
       <section className="mb-32">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div className="group relative inline-block">
-            <h2 className="text-4xl font-semibold">Your Top Tracks</h2>
+            <h2 className="text-3xl md:text-4xl font-semibold">Your Top Tracks</h2>
             <span className="absolute left-0 -bottom-1 block h-0.5 bg-green-500 w-0 group-hover:w-full transition-all duration-300"></span>
           </div>
-          <TimeRangeSelector 
-            selectedValue={tracksTimeFrame} 
-            onChange={handleTracksTimeFrameChange}
-          />
+          <div className="w-full md:w-auto">
+            <TimeRangeSelector 
+              selectedValue={tracksTimeFrame} 
+              onChange={handleTracksTimeFrameChange}
+            />
+          </div>
         </div>
         <TopTracksChart songs={topTracks} />
       </section>
@@ -233,13 +237,15 @@ const Dashboard = ({ userId }) => {
       <section className="mb-32">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div className="group relative inline-block">
-            <h2 className="text-4xl font-semibold">Your Top Albums</h2>
+            <h2 className="text-3xl md:text-4xl font-semibold">Your Top Albums</h2>
             <span className="absolute left-0 -bottom-1 block h-0.5 bg-green-500 w-0 group-hover:w-full transition-all duration-300"></span>
           </div>
-          <TimeRangeSelector 
-            selectedValue={albumsTimeFrame} 
-            onChange={handleAlbumsTimeFrameChange}
-          />
+          <div className="w-full md:w-auto">
+            <TimeRangeSelector 
+              selectedValue={albumsTimeFrame} 
+              onChange={handleAlbumsTimeFrameChange}
+            />
+          </div>
         </div>
         <p className="text-sm text-gray-500 mb-4">
           Top albums are calculated by grouping your most listened-to tracks by album.
@@ -251,13 +257,15 @@ const Dashboard = ({ userId }) => {
       <section className="mb-32">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div className="group relative inline-block">
-            <h2 className="text-4xl font-semibold">Top Artists</h2>
+            <h2 className="text-3xl md:text-4xl font-semibold">Top Artists</h2>
             <span className="absolute left-0 -bottom-1 block h-0.5 bg-green-500 w-0 group-hover:w-full transition-all duration-300"></span>
           </div>
-          <TimeRangeSelector 
-            selectedValue={artistsTimeFrame} 
-            onChange={handleArtistsTimeFrameChange}
-          />
+          <div className="w-full md:w-auto">
+            <TimeRangeSelector 
+              selectedValue={artistsTimeFrame} 
+              onChange={handleArtistsTimeFrameChange}
+            />
+          </div>
         </div>
         <TopArtistsChart artists={topArtists} />
       </section>
@@ -265,7 +273,7 @@ const Dashboard = ({ userId }) => {
       {/* Favorite Genres Evolution */}
       <section className="mb-8">
         <div className="group relative inline-block">
-          <h2 className="text-4xl font-semibold">Favorite Genres Evolution</h2>
+          <h2 className="text-3xl md:text-4xl font-semibold">Favorite Genres Evolution</h2>
           <span className="absolute left-0 -bottom-1 block h-0.5 bg-green-500 w-0 group-hover:w-full transition-all duration-300"></span>
         </div>
         <FavoriteGenresEvolution userId={userId} />
