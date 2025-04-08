@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Dashboard from "../components/Dashboard";
 import { getCurrentUser } from "../api";
 import { useAuth } from "../hooks/useAuth";
+import useUser from "../hooks/useUser";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Iridescence from "../styles/backgrounds/Iridescence";
@@ -10,13 +11,22 @@ import SplitText from "../styles/text-animations/SplitText";
 
 const Home = () => {
   const { user, login } = useAuth();
+  const { spotifyUser, spotifyLoading } = useUser();
   const navigate = useNavigate();
   const [showScrollTop, setShowScrollTop] = useState(false);
   
   const greetingText = useMemo(() => {
-    if (!user) return "Hi there!";
-    return `Hi there, ${user.display_name || user.email}!`;
-  }, [user]);
+    //~ 1st try use Spotify user data frm context
+    if (spotifyUser && spotifyUser.display_name) {
+      return `Hi there, ${spotifyUser.display_name}!`;
+    }
+    //~ fall back auth user if avail
+    if (user) {
+      return `Hi there, ${user.display_name || user.email}!`;
+    }
+    //~ default greeting
+    return "Hi there!";
+  }, [user, spotifyUser]);
   
   useEffect(() => {
     async function fetchUser() {
@@ -58,7 +68,7 @@ const Home = () => {
     });
   };
 
-  if (!user) return <p>Loading...</p>;
+  if (!user && spotifyLoading) return <p>Loading...</p>;
 
   return (
     <div className="relative w-full min-h-screen overflow-hidden" style={{ fontFamily: "'Circular', sans-serif" }}>
@@ -128,7 +138,7 @@ const Home = () => {
             />
           </div>
         </header>
-        <Dashboard userId={user.id} />
+        <Dashboard userId={user?.id} />
         
         {/* Back to Top */}
         {showScrollTop && (

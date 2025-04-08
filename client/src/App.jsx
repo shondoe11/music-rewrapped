@@ -11,6 +11,7 @@ import PromoterPanel from './pages/PromoterPanel';
 import ReWrapped from './pages/ReWrapped';
 import About from './pages/About';
 import { useAuth } from './hooks/useAuth';
+import { UserProvider } from './context/UserContext';
 
 const RootRedirect = () => {
   const { user } = useAuth();
@@ -41,21 +42,23 @@ const RootRedirect = () => {
 
 function App() {
   return (
-    <Router>
-      <Navbar />
-      <Routes>
-        <Route path='/' element={<RootRedirect />} />
-        <Route path='/about' element={<About />} />
-        <Route path='/spotify-login' element={<SpotifyLogin />} />
-        <Route path='/login' element={<Login />} />
-        <Route path='/register' element={<Register />} />
-        <Route path='/profile' element={<Profile />} />
-        <Route path='/home' element={<Home />} />
-        <Route path="/rewrapped" element={<ReWrapped />} />
-        <Route path='/events' element={<EventsPage />} />
-        <Route path="/promoter-panel" element={<PromoterPanel />} />
-      </Routes>
-    </Router>
+    <UserProvider>
+      <Router>
+        <Navbar />
+        <Routes>
+          <Route path='/' element={<RootRedirect />} />
+          <Route path='/about' element={<About />} />
+          <Route path='/spotify-login' element={<SpotifyLogin />} />
+          <Route path='/login' element={<Login />} />
+          <Route path='/register' element={<Register />} />
+          <Route path='/profile' element={<Profile />} />
+          <Route path='/home' element={<Home />} />
+          <Route path="/rewrapped" element={<ReWrapped />} />
+          <Route path='/events' element={<EventsPage />} />
+          <Route path="/promoter-panel" element={<PromoterPanel />} />
+        </Routes>
+      </Router>
+    </UserProvider>
   );
 }
 
