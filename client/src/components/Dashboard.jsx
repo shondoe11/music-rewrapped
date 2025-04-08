@@ -33,16 +33,19 @@ const TimeRangeSelector = ({ selectedValue, onChange, className = '' }) => {
   );
 };
 
-const RefreshButton = ({ onClick }) => (
+const RefreshButton = ({ onClick, className = '' }) => (
   <button
     onClick={onClick}
-    className="p-3 bg-gray-100/10 backdrop-blur-sm hover:bg-gray-800/50 text-gray-400 hover:text-green-500 rounded-full flex items-center justify-center transition-all duration-300 border border-gray-300/20"
+    className={`p-3 bg-gray-100/10 backdrop-blur-sm hover:bg-gray-800/50 text-gray-400 hover:text-green-500 rounded-lg flex items-center justify-center transition-all duration-300 border border-gray-300/20 ${className}`}
     aria-label="Refresh recently played tracks"
     title="Refresh recently played tracks"
   >
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-    </svg>
+    <div className="flex items-center justify-center w-full">
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+      <span className="ml-2 md:hidden">Refresh</span>
+    </div>
   </button>
 );
 
@@ -209,8 +212,8 @@ const Dashboard = ({ userId }) => {
             <h2 className="text-3xl md:text-4xl font-semibold">Recently Played</h2>
             <span className="absolute left-0 -bottom-1 block h-0.5 bg-green-500 w-0 group-hover:w-full transition-all duration-300"></span>
           </div>
-          <div className="self-end">
-            <RefreshButton onClick={handleRefreshRecentlyPlayed} />
+          <div className="w-full md:w-auto">
+            <RefreshButton onClick={handleRefreshRecentlyPlayed} className="w-full md:w-auto" />
           </div>
         </div>
         <RecentlyPlayedTracks tracks={recentlyPlayed} />
