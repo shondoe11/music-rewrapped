@@ -38,11 +38,12 @@ export const AuthProvider = ({ children, initialToken }) => {
     return token;
   };
 
-  //& decode JWT & fetch user info
-  const fetchUserFromToken = (token) => {
+  //& decode JWT and fetch user info
+  const fetchUserFromToken = async (token) => {
     if (!token) return false;
     
     try {
+      //~ decode token to get user_id
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const jsonPayload = decodeURIComponent(
@@ -59,9 +60,37 @@ export const AuthProvider = ({ children, initialToken }) => {
         return false;
       }
       
-      //~ set user frm decoded payload
-      setUser({ id: user_id });
-      return true;
+      //~ fetch full user data frm API
+      try {
+        console.log('Fetching user data from API');
+        const response = await fetch('/auth/user', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            console.log('User data fetched successfully:', data.user);
+            setUser(data.user);
+            return true;
+          }
+        } else {
+          console.warn('Failed to fetch user data, status:', response.status);
+        }
+        
+        //~ fallback to basic user if API call fails
+        console.log('Using basic user info from token');
+        setUser({ id: user_id });
+        return true;
+      } catch (err) {
+        console.error("Error fetching user data:", err);
+        //~ still set basic user so auth works
+        setUser({ id: user_id });
+        return true;
+      }
     } catch (err) {
       console.error("Invalid JWT token:", err);
       return false;
@@ -69,26 +98,24 @@ export const AuthProvider = ({ children, initialToken }) => {
   };
 
   useEffect(() => {
-    //& handle token during mount or when initialToken changes
-    if (initialToken) {
-      //~ token was explicitly passed (frm URL extraction)
-      console.log('Processing initialToken from URL');
-      const success = fetchUserFromToken(initialToken);
-      
-      if (success) {
-        console.log('Successfully authenticated with token from URL');
+    //& handle token during mount or initialToken changes
+    const loadUser = async () => {
+      setLoading(true);
+      if (initialToken) {
+        //~ token was explicitly passed (from URL extraction)
+        console.log('Processing initialToken from URL');
+        await fetchUserFromToken(initialToken);
       } else {
-        console.error('Failed to authenticate with token from URL');
+        //~ check fr stored token
+        const token = getToken();
+        if (token) {
+          await fetchUserFromToken(token);
+        }
       }
-    } else {
-      //~ check fr stored token
-      const token = getToken();
-      if (token) {
-        fetchUserFromToken(token);
-      }
-    }
+      setLoading(false);
+    };
     
-    setLoading(false);
+    loadUser();
   }, [initialToken]);
 
   const login = (userData, token) => {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as d3 from 'd3';
 import { getSpotifyTopArtistsWithGenres } from '../api';
+import { isSafari } from '../utils/browserDetection';
 
 const timeFrameMapping = [
   { label: 'Last 4 Weeks', value: 'short_term' },
@@ -258,6 +259,71 @@ const FavoriteGenresEvolution = ({ userId }) => {
         .style("font-weight", "600")
         .text(key);
     });
+
+    //& Safari-specific SVG fixes
+    if (isSafari()) {
+      console.log('Applying Safari-specific fixes for genres chart');
+      
+      //~ set more explicit SVG attributes
+      svg.attr('width', '100%')
+          .attr('height', '100%')
+          .attr('preserveAspectRatio', 'xMidYMid meet');
+      
+      //~ force redraw after a delay to ensure Safari renders properly
+      setTimeout(() => {
+        //~ clone and replace path elements to force redraw
+        g.selectAll('path.layer').each(function() {
+          const path = d3.select(this);
+          const pathData = path.attr('d');
+          const fillColor = path.style('fill');
+          const opacity = path.style('opacity');
+          
+          //~ only process if we have valid path data
+          if (pathData) {
+            const parent = path.node().parentNode;
+            path.remove();
+            d3.select(parent)
+              .append('path')
+              .attr('class', 'layer')
+              .attr('d', pathData)
+              .style('fill', fillColor)
+              .style('opacity', opacity)
+              //~ reattach event handlers
+              .on("mouseover", function(event, d) {
+                const datum = d3.select(this).datum();
+                if (!datum) return;
+                const timeFrame = datum[0]?.data?.timeFrame || '';
+                const genreKey = topGenres.find(g => color(g) === fillColor) || 'Unknown';
+                const genreValue = datum[0]?.data[genreKey] || 0;
+                const extra = datum[0]?.data[`_${genreKey}`] || { numArtists: 0, avgRank: 0 };
+                
+                d3.select(tooltipRef.current)
+                  .style("display", "block")
+                  .style("background", "rgba(0, 0, 0, 0.85)")
+                  .style("color", "#1DB954")
+                  .style("border-radius", "8px")
+                  .style("padding", "12px")
+                  .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
+                  .style("font-weight", "500")
+                  .style("font-size", "14px")
+                  .style("line-height", "1.5")
+                  .html(`<strong style="color: #1DB954">Genre:</strong> <span style="color: white">${genreKey}</span><br/>
+                          <strong style="color: #1DB954">Time Frame:</strong> <span style="color: white">${timeFrame}</span><br/>
+                          <strong style="color: #1DB954"># of Artists:</strong> <span style="color: white">${extra.numArtists}</span><br/>
+                          <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${extra.avgRank.toFixed(1)}</span>`);
+              })
+              .on("mousemove", function(event) {
+                d3.select(tooltipRef.current)
+                  .style("left", (event.pageX + 10) + "px")
+                  .style("top", (event.pageY - 28) + "px");
+              })
+              .on("mouseout", function() {
+                d3.select(tooltipRef.current).style("display", "none");
+              });
+          }
+        });
+      }, 500);
+    }
   }, [data, topGenres]);
 
   return (
@@ -271,7 +337,7 @@ const FavoriteGenresEvolution = ({ userId }) => {
         }}
       >
         <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <svg ref={svgRef} viewBox="0 0 900 400" preserveAspectRatio="xMidYMid meet"></svg>
+          <svg ref={svgRef} viewBox="0 0 900 400" preserveAspectRatio="xMidYMid meet" width="100%" height="100%"></svg>
         </div>
       </div>
       <div 
