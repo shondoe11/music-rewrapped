@@ -190,7 +190,7 @@ def callback():
         client_base_url = client_base_url[:-1]
     
     #& add token to redirect URL fr cross-browser compatibility
-    redirect_url = f"{client_base_url}/spotify-login?token={jwt_token}"
+    redirect_url = f"{client_base_url}?token={jwt_token}"
     
     print(f"redirecting to: {redirect_url}")  #? debugging
     
