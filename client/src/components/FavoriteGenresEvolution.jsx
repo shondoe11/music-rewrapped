@@ -158,43 +158,112 @@ const FavoriteGenresEvolution = ({ userId }) => {
 
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    //& draw layers w tooltip interactivity
-    g.selectAll(".layer")
-      .data(series)
-      .enter().append("path")
-      .attr("class", "layer")
-      .attr("d", area)
-      .style("fill", d => color(d.key))
-      .style("opacity", 0.8)
-      .on("mouseover", function(event, d) {
-        const datum = d[0].data;
-        const genreValue = datum[d.key];
-        const total = keys.reduce((acc, key) => acc + (datum[key] || 0), 0);
-        const percentage = total ? ((genreValue / total) * 100).toFixed(1) : 0;
-        const extra = datum[`_${d.key}`];
-        d3.select(tooltipRef.current)
-          .style("display", "block")
-          .style("background", "rgba(0, 0, 0, 0.85)")
-          .style("color", "#1DB954")
-          .style("border-radius", "8px")
-          .style("padding", "12px")
-          .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
-          .style("font-weight", "500")
-          .style("font-size", "14px")
-          .style("line-height", "1.5")
-          .html(`<strong style="color: #1DB954">Genre:</strong> <span style="color: white">${d.key}</span><br/>
-                  <strong style="color: #1DB954">% Contribution:</strong> <span style="color: white">${percentage}%</span><br/>
-                  <strong style="color: #1DB954"># of Artists:</strong> <span style="color: white">${extra.numArtists}</span><br/>
-                  <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${extra.avgRank.toFixed(1)}</span>`);
-      })
-      .on("mousemove", function(event) {
-        d3.select(tooltipRef.current)
-          .style("left", (event.pageX + 10) + "px")
-          .style("top", (event.pageY - 28) + "px");
-      })
-      .on("mouseout", function() {
-        d3.select(tooltipRef.current).style("display", "none");
+    if (!isSafari()) {
+      //& draw layers w tooltip interactivity (non-Safari browsers)
+      g.selectAll(".layer")
+        .data(series)
+        .enter().append("path")
+        .attr("class", "layer")
+        .attr("d", area)
+        .style("fill", d => color(d.key))
+        .style("opacity", 0.8)
+        .on("mouseover", function(event, d) {
+          const datum = d[0].data;
+          const genreValue = datum[d.key];
+          const total = keys.reduce((acc, key) => acc + (datum[key] || 0), 0);
+          const percentage = total ? ((genreValue / total) * 100).toFixed(1) : 0;
+          const extra = datum[`_${d.key}`];
+          d3.select(tooltipRef.current)
+            .style("display", "block")
+            .style("background", "rgba(0, 0, 0, 0.85)")
+            .style("color", "#1DB954")
+            .style("border-radius", "8px")
+            .style("padding", "12px")
+            .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
+            .style("font-weight", "500")
+            .style("font-size", "14px")
+            .style("line-height", "1.5")
+            .html(`<strong style="color: #1DB954">Genre:</strong> <span style="color: white">${d.key}</span><br/>
+                    <strong style="color: #1DB954">% Contribution:</strong> <span style="color: white">${percentage}%</span><br/>
+                    <strong style="color: #1DB954"># of Artists:</strong> <span style="color: white">${extra.numArtists}</span><br/>
+                    <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${extra.avgRank.toFixed(1)}</span>`);
+        })
+        .on("mousemove", function(event) {
+          d3.select(tooltipRef.current)
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mouseout", function() {
+          d3.select(tooltipRef.current).style("display", "none");
+        });
+    } else {
+      //& Safari-specific rendering & interaction
+      console.log('Rendering Safari-specific chart');
+      
+      //~ first draw paths w/o events
+      g.selectAll(".layer")
+        .data(series)
+        .enter().append("path")
+        .attr("class", "layer")
+        .attr("d", area)
+        .style("fill", d => color(d.key))
+        .style("opacity", 0.8);
+      
+      //~ create container fr hover areas
+      const tooltipAreas = g.append("g").attr("class", "safari-tooltip-areas");
+      
+      //~ add invisible hover rectangles fr each genre/timeframe
+      data.forEach((timeFrameData, timeIndex) => {
+        keys.forEach((genreKey, genreIndex) => {
+          const xPos = x(timeFrameData.timeFrame);
+          const seriesData = series[genreIndex];
+          const yPos = y(seriesData[timeIndex][1]);
+          const height = Math.abs(y(seriesData[timeIndex][0]) - y(seriesData[timeIndex][1]));
+          
+          if (height > 0) {
+            tooltipAreas.append("rect")
+              .attr("x", xPos - 40)
+              .attr("y", yPos)
+              .attr("width", 80)
+              .attr("height", height)
+              .attr("fill", "transparent")
+              .attr("data-genre", genreKey)
+              .attr("data-timeframe", timeFrameData.timeFrame)
+              .attr("class", "safari-tooltip-trigger")
+              .style("cursor", "pointer")
+              .on("mouseover", function() {
+                const genreValue = timeFrameData[genreKey];
+                const total = keys.reduce((acc, key) => acc + (timeFrameData[key] || 0), 0);
+                const percentage = total ? ((genreValue / total) * 100).toFixed(1) : 0;
+                const extra = timeFrameData[`_${genreKey}`];
+                
+                d3.select(tooltipRef.current)
+                  .style("display", "block")
+                  .style("background", "rgba(0, 0, 0, 0.85)")
+                  .style("color", "#1DB954")
+                  .style("border-radius", "8px")
+                  .style("padding", "12px")
+                  .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
+                  .style("font-weight", "500")
+                  .style("font-size", "14px")
+                  .style("line-height", "1.5")
+                  .html(`<strong style="color: #1DB954">Genre:</strong> <span style="color: white">${genreKey}</span><br/>
+                          <strong style="color: #1DB954">% Contribution:</strong> <span style="color: white">${percentage}%</span><br/>
+                          <strong style="color: #1DB954"># of Artists:</strong> <span style="color: white">${extra.numArtists}</span><br/>
+                          <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${extra.avgRank.toFixed(1)}</span>`);
+              })
+              .on("mousemove", function(event) {
+                d3.select(tooltipRef.current)
+                  .style("left", (event.pageX + 10) + "px")
+                  .style("top", (event.pageY - 28) + "px");
+              })
+              .on("mouseout", function() {
+                d3.select(tooltipRef.current).style("display", "none");
+              });
+          }
+        });
       });
+    }
 
     //& x-axis format & styling
     g.append("g")
@@ -262,67 +331,10 @@ const FavoriteGenresEvolution = ({ userId }) => {
 
     //& Safari-specific SVG fixes
     if (isSafari()) {
-      console.log('Applying Safari-specific fixes for genres chart');
-      
       //~ set more explicit SVG attributes
       svg.attr('width', '100%')
-          .attr('height', '100%')
-          .attr('preserveAspectRatio', 'xMidYMid meet');
-      
-      //~ force redraw after a delay to ensure Safari renders properly
-      setTimeout(() => {
-        //~ clone and replace path elements to force redraw
-        g.selectAll('path.layer').each(function() {
-          const path = d3.select(this);
-          const pathData = path.attr('d');
-          const fillColor = path.style('fill');
-          const opacity = path.style('opacity');
-          
-          //~ only process if we have valid path data
-          if (pathData) {
-            const parent = path.node().parentNode;
-            path.remove();
-            d3.select(parent)
-              .append('path')
-              .attr('class', 'layer')
-              .attr('d', pathData)
-              .style('fill', fillColor)
-              .style('opacity', opacity)
-              //~ reattach event handlers
-              .on("mouseover", function(event, d) {
-                const datum = d3.select(this).datum();
-                if (!datum) return;
-                const timeFrame = datum[0]?.data?.timeFrame || '';
-                const genreKey = topGenres.find(g => color(g) === fillColor) || 'Unknown';
-                const genreValue = datum[0]?.data[genreKey] || 0;
-                const extra = datum[0]?.data[`_${genreKey}`] || { numArtists: 0, avgRank: 0 };
-                
-                d3.select(tooltipRef.current)
-                  .style("display", "block")
-                  .style("background", "rgba(0, 0, 0, 0.85)")
-                  .style("color", "#1DB954")
-                  .style("border-radius", "8px")
-                  .style("padding", "12px")
-                  .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
-                  .style("font-weight", "500")
-                  .style("font-size", "14px")
-                  .style("line-height", "1.5")
-                  .html(`<strong style="color: #1DB954">Genre:</strong> <span style="color: white">${genreKey}</span><br/>
-                          <strong style="color: #1DB954">Time Frame:</strong> <span style="color: white">${timeFrame}</span><br/>
-                          <strong style="color: #1DB954"># of Artists:</strong> <span style="color: white">${extra.numArtists}</span><br/>
-                          <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${extra.avgRank.toFixed(1)}</span>`);
-              })
-              .on("mousemove", function(event) {
-                d3.select(tooltipRef.current)
-                  .style("left", (event.pageX + 10) + "px")
-                  .style("top", (event.pageY - 28) + "px");
-              })
-              .on("mouseout", function() {
-                d3.select(tooltipRef.current).style("display", "none");
-              });
-          }
-        });
-      }, 500);
+         .attr('height', '100%')
+         .attr('preserveAspectRatio', 'xMidYMid meet');
     }
   }, [data, topGenres]);
 

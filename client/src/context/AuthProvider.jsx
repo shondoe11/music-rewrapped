@@ -38,7 +38,7 @@ export const AuthProvider = ({ children, initialToken }) => {
     return token;
   };
 
-  //& decode JWT and fetch user info
+  //& decode JWT & fetch user info
   const fetchUserFromToken = async (token) => {
     if (!token) return false;
     
@@ -72,23 +72,63 @@ export const AuthProvider = ({ children, initialToken }) => {
         
         if (response.ok) {
           const data = await response.json();
+          console.log('User API response:', data);
+          
           if (data.user) {
-            console.log('User data fetched successfully:', data.user);
-            setUser(data.user);
+            //~ ensure have username / display_name
+            const userData = {
+              ...data.user,
+              //~ if !display_name/username in API response, try get frm Spotify profile
+              display_name: data.user.display_name || data.user.name || 
+                            data.spotify_profile?.display_name || 'there'
+            };
+            console.log('Setting complete user data:', userData);
+            setUser(userData);
             return true;
           }
         } else {
           console.warn('Failed to fetch user data, status:', response.status);
+          
+          //~ try Spotify profile directly if user data fails
+          try {
+            const spotifyResponse = await fetch('/spotify/me', {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              },
+              credentials: 'include'
+            });
+            
+            if (spotifyResponse.ok) {
+              const spotifyData = await spotifyResponse.json();
+              console.log('Spotify profile data:', spotifyData);
+              
+              //~ set user w Spotify profile
+              setUser({
+                id: user_id,
+                display_name: spotifyData.display_name || spotifyData.name || 'there',
+                ...spotifyData
+              });
+              return true;
+            }
+          } catch (err) {
+            console.error("Error fetching Spotify profile:", err);
+          }
         }
         
-        //~ fallback to basic user if API call fails
-        console.log('Using basic user info from token');
-        setUser({ id: user_id });
+        //~ fallback to basic user w placeholder name
+        console.log('Using basic user info with default name');
+        setUser({ 
+          id: user_id,
+          display_name: 'there'  //~ set default display_name
+        });
         return true;
       } catch (err) {
         console.error("Error fetching user data:", err);
         //~ still set basic user so auth works
-        setUser({ id: user_id });
+        setUser({ 
+          id: user_id,
+          display_name: 'there'  //~ set default display_name
+        });
         return true;
       }
     } catch (err) {
@@ -122,7 +162,11 @@ export const AuthProvider = ({ children, initialToken }) => {
     if (token) {
       storeToken(token);
     }
-    setUser(userData);
+    //~ ensure display_name is set
+    setUser({
+      ...userData,
+      display_name: userData.display_name || userData.name || 'there'
+    });
   };
 
   const logout = () => {
