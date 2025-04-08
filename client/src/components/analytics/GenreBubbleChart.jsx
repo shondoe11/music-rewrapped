@@ -47,7 +47,8 @@ const GenreBubbleChart = ({ userId }) => {
         const svg = d3.select(svgRef.current)
             .attr("viewBox", `0 0 ${width} ${height}`)
             .attr("width", "100%")
-            .attr("height", height);
+            .attr("height", height)
+            .attr("preserveAspectRatio", "xMidYMid meet")
             
         //~ hierarchy data structure fr bubble layout
         const hierarchy = {
@@ -156,7 +157,8 @@ const GenreBubbleChart = ({ userId }) => {
                 .attr("id", gradientId)
                 .attr("cx", "30%")
                 .attr("cy", "30%")
-                .attr("r", "70%");
+                .attr("r", "70%")
+                .attr("gradientUnits", "objectBoundingBox");
                 
             gradient.append("stop")
                 .attr("offset", "0%")

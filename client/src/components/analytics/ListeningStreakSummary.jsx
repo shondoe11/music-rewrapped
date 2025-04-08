@@ -178,9 +178,11 @@ const ListeningStreakSummary = ({ userId }) => {
             .attr("x", "-50%")
             .attr("y", "-50%")
             .attr("width", "200%")
-            .attr("height", "200%");
+            .attr("height", "200%")
+            .attr("filterUnits", "userSpaceOnUse");
             
         filter.append("feGaussianBlur")
+            .attr("in", "SourceGraphic")
             .attr("stdDeviation", "3")
             .attr("result", "blur");
             

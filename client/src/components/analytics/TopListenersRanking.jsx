@@ -4,16 +4,40 @@ import GaugeChart from 'react-gauge-chart';
 import Loader from '../../styles/Loader';
 import { getTopListenersPercentile } from '../../services/analyticsService';
 import { motion } from 'framer-motion';
+import { isSafari, isFirefox } from '../../utils/browserDetection';
+
+const SimpleFallbackGauge = ({ percentile, fanTier }) => {
+    return (
+        <div className="relative pt-5 pb-10">
+            <div className="h-8 bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                    className="h-full bg-gradient-to-r from-pink-400 via-purple-500 to-blue-500"
+                    style={{ width: `${percentile}%` }}
+                />
+            </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-4xl font-bold text-white">{Math.round(percentile)}%</span>
+                <span className="mt-2 text-lg font-medium" style={{ color: fanTier.color }}>
+                    {fanTier.tier}
+                </span>
+            </div>
+        </div>
+    );
+};
 
 const TopListenersRanking = ({ userId }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [animatedPercentile, setAnimatedPercentile] = useState(0);
+    const [shouldUseFallback, setShouldUseFallback] = useState(false);
     
     const gaugeRef = useRef(null);
     
     useEffect(() => {
+        //~ check if shld use fallback fr Safari / Firefox
+        setShouldUseFallback(isSafari() || isFirefox());
+        
         const fetchData = async () => {
             setLoading(true);
             try {
@@ -57,7 +81,7 @@ const TopListenersRanking = ({ userId }) => {
         animatePercentile();
     }, [data]);
     
-    //& get fan tier based on percentile
+    //& Get fan tier based on percentile
     const getFanTier = (percentile) => {
         if (percentile >= 95) return { tier: "Super Fan", color: "#10B981" };
         if (percentile >= 80) return { tier: "Dedicated Fan", color: "#3B82F6" };
@@ -97,14 +121,17 @@ const TopListenersRanking = ({ userId }) => {
     //& normalize percentile to gauge range (0-1)
     const normalizedPercentile = data.percentile_ranking / 100;
     
-    //& define color steps fr gradient w modern colors
+    //& define color steps fr gradient with more modern colors
     const gradientColors = ['#F97316', '#EC4899', '#8B5CF6', '#3B82F6', '#10B981']; //~ orange, pink, purple, blue, green
     
     const fanTier = getFanTier(data.percentile_ranking);
     
+    //~ browser-specific class fr styling
+    const containerClass = `bg-gray-800/40 backdrop-blur-xl p-6 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-pink-500/5 transition-all duration-300 ${isSafari() ? 'safari-compat' : ''} ${isFirefox() ? 'firefox-compat' : ''}`;
+    
     return (
         <motion.div 
-            className="bg-gray-800/40 backdrop-blur-xl p-6 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-pink-500/5 transition-all duration-300"
+            className={containerClass}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -119,7 +146,7 @@ const TopListenersRanking = ({ userId }) => {
             </motion.h3>
             
             <motion.div 
-                className="grid grid-cols-1 gap-6 mb-6"
+                className="grid grid-cols-1 gap-6 mb-6 safari-grid-fix"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
@@ -128,41 +155,48 @@ const TopListenersRanking = ({ userId }) => {
                     <div className="relative flex justify-center">
                         <div className="w-full max-w-2xl mx-auto">
                             <div className="relative">
-                                <div ref={gaugeRef}>
-                                    <GaugeChart 
-                                        id="top-listener-gauge"
-                                        nrOfLevels={30}
-                                        colors={gradientColors}
-                                        percent={normalizedPercentile}
-                                        arcWidth={0.25}
-                                        needleColor="#FFF"
-                                        needleBaseColor="#FFF"
-                                        animate={true}
-                                        animDelay={0}
-                                        animateDuration={2000}
-                                        hideText={true}
-                                        cornerRadius={6}
+                                {shouldUseFallback ? (
+                                    <SimpleFallbackGauge 
+                                        percentile={data.percentile_ranking} 
+                                        fanTier={fanTier} 
                                     />
-                                </div>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <motion.span 
-                                        className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-purple-500 to-blue-500"
-                                        initial={{ scale: 0.5, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        transition={{ duration: 0.8, delay: 0.5 }}
-                                    >
-                                        {animatedPercentile}%
-                                    </motion.span>
-                                    <motion.span 
-                                        className="mt-2 text-lg font-medium" 
-                                        style={{ color: fanTier.color }}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ duration: 0.5, delay: 1.2 }}
-                                    >
-                                        {fanTier.tier}
-                                    </motion.span>
-                                </div>
+                                ) : (
+                                    <div ref={gaugeRef}>
+                                        <GaugeChart 
+                                            id="top-listener-gauge"
+                                            nrOfLevels={30}
+                                            colors={gradientColors}
+                                            percent={normalizedPercentile}
+                                            arcWidth={0.25}
+                                            needleColor="#FFF"
+                                            needleBaseColor="#FFF"
+                                            animate={true}
+                                            animDelay={0}
+                                            animateDuration={2000}
+                                            hideText={true}
+                                            cornerRadius={6}
+                                        />
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                            <motion.span 
+                                                className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-purple-500 to-blue-500"
+                                                initial={{ scale: 0.5, opacity: 0 }}
+                                                animate={{ scale: 1, opacity: 1 }}
+                                                transition={{ duration: 0.8, delay: 0.5 }}
+                                            >
+                                                {animatedPercentile}%
+                                            </motion.span>
+                                            <motion.span 
+                                                className="mt-2 text-lg font-medium" 
+                                                style={{ color: fanTier.color }}
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                transition={{ duration: 0.5, delay: 1.2 }}
+                                            >
+                                                {fanTier.tier}
+                                            </motion.span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             
                             {data.favorite_artist && (
@@ -186,7 +220,7 @@ const TopListenersRanking = ({ userId }) => {
             </motion.div>
             
             <motion.div 
-                className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4"
+                className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 safari-grid-fix"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 1.7 }}
@@ -239,7 +273,7 @@ const TopListenersRanking = ({ userId }) => {
                     This gauge shows where you rank among all listeners of your favorite artist. A higher percentile means you're among the most dedicated fans of {data.favorite_artist}!
                 </p>
                 <p className="mt-2">
-                    Your ranking is based on your listening frequency, playlist inclusions, and overall engagement with the artist's music compared to other fans on the platform.
+                    Your ranking is based on your listening frequency, playlist inclusions, and overall engagement with the artist's music compared to other fans.
                 </p>
             </div>
         </motion.div>
@@ -248,6 +282,11 @@ const TopListenersRanking = ({ userId }) => {
 
 TopListenersRanking.propTypes = {
     userId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired
+};
+
+SimpleFallbackGauge.propTypes = {
+    percentile: PropTypes.number.isRequired,
+    fanTier: PropTypes.object.isRequired
 };
 
 export default TopListenersRanking;

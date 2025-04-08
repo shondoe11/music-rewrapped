@@ -1,0 +1,96 @@
+/* Safari backdrop-filter support */
+.backdrop-blur-xl {
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+    }
+
+.backdrop-blur-md {
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+
+.backdrop-blur-sm {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+
+/* Firefox fallbacks for backdrop-filter */
+@supports not (backdrop-filter: blur(12px)) {
+    .backdrop-blur-xl {
+        background-color: rgba(17, 24, 39, 0.9) !important;
+    }
+    
+    .backdrop-blur-md {
+        background-color: rgba(17, 24, 39, 0.85) !important;
+    }
+    
+    .backdrop-blur-sm {
+        background-color: rgba(17, 24, 39, 0.75) !important;
+    }
+}
+
+ /* Text gradient fixes */
+.text-transparent.bg-gradient-to-r,
+.text-transparent.bg-gradient-to-l,
+.text-transparent[class*="bg-gradient-"] {
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Gradient text fallback */
+@supports not (background-clip: text) {
+    .text-transparent.bg-gradient-to-r {
+        background-image: none !important;
+        color: #ec4899 !important;
+        -webkit-text-fill-color: initial;
+    }
+}
+
+/* Safari flexbox fixes */
+.safari-flex-fix {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+}
+
+.safari-grid-fix {
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Browser-specific classes */
+.safari-compat .backdrop-blur-xl,
+.safari-compat .backdrop-blur-md,
+.safari-compat .backdrop-blur-sm {
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+}
+
+.firefox-compat .text-transparent[class*="bg-gradient-"] {
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.no-backdrop-filter .backdrop-blur-xl {
+    background-color: rgba(17, 24, 39, 0.9) !important;
+}
+
+/* Firefox text rendering fix */
+.firefox-compat .font-bold,
+.firefox-compat .font-semibold {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* Fix for Safari's SVG text positioning */
+.safari-svg-fix text {
+    dominant-baseline: central;
+}
+
+/* Add to browser-compatibility.css */
+.safari-compat .animate-pulse {
+    animation-duration: 2s;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+}

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import {BrowserRouter as Router, Routes, Route, useNavigate} from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import Home from './pages/Home';
 import SpotifyLogin from './pages/SpotifyLogin';
 import Login from './pages/Login';
@@ -44,7 +44,7 @@ function App() {
         <Route path="/promoter-panel" element={<PromoterPanel />} />
       </Routes>
     </Router>
-  )
+  );
 }
 
 export default App;

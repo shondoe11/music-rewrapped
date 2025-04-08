@@ -182,9 +182,9 @@ const FavoriteGenresEvolution = ({ userId }) => {
           .style("font-size", "14px")
           .style("line-height", "1.5")
           .html(`<strong style="color: #1DB954">Genre:</strong> <span style="color: white">${d.key}</span><br/>
-                 <strong style="color: #1DB954">% Contribution:</strong> <span style="color: white">${percentage}%</span><br/>
-                 <strong style="color: #1DB954"># of Artists:</strong> <span style="color: white">${extra.numArtists}</span><br/>
-                 <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${extra.avgRank.toFixed(1)}</span>`);
+                  <strong style="color: #1DB954">% Contribution:</strong> <span style="color: white">${percentage}%</span><br/>
+                  <strong style="color: #1DB954"># of Artists:</strong> <span style="color: white">${extra.numArtists}</span><br/>
+                  <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${extra.avgRank.toFixed(1)}</span>`);
       })
       .on("mousemove", function(event) {
         d3.select(tooltipRef.current)
