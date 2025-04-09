@@ -72,9 +72,11 @@ jobs:
         
       - name: Run migrations
         run: |
-          docker run --rm --network=host \
+          docker network create app_network || true
+          docker run --rm -d --name redis --network app_network redis:latest
+          docker run --rm --network app_network \
             -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db \
-            -e REDIS_URL=redis://localhost:6379/0 \
+            -e REDIS_URL=redis://redis:6379/0 \
             -e CI=true \
             music-rewrapped-backend \
             flask db upgrade

@@ -58,8 +58,7 @@ jobs:
       
       - name: Build and test services
         run: |
-          #~ Using Docker Compose V2 syntax (no hyphen) which is pre-installed on GitHub runners
           docker compose -f docker-compose-ci.yml build
           docker compose -f docker-compose-ci.yml up -d postgres redis
-          sleep 10 #~ Give services time to start
+          sleep 10
           docker compose -f docker-compose-ci.yml run --rm backend
