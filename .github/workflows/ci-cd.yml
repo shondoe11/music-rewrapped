@@ -85,8 +85,9 @@ jobs:
             -e DATABASE_URL=postgresql+psycopg://postgres:password@postgres:5432/test_db \
             -e REDIS_URL=redis://redis:6379/0 \
             -e CI=true \
+            -e PYTHONPATH=/app \
             music-rewrapped-backend \
-            pytest tests/integration
+            python -m pytest tests/integration
         #~ ensure have tests/integration avail in codebase
 
       - name: run frontend tests
