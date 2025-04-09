@@ -1,0 +1,55 @@
+name: CI Migration Fix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v3
+        
+      - name: Build backend
+        run: docker build -f Dockerfile.backend -t music-rewrapped-backend .
+        
+      - name: Run migrations
+        run: |
+          docker run --rm --network=host \
+            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db \
+            -e REDIS_URL=redis://localhost:6379/0 \
+            -e CI=true \
+            music-rewrapped-backend \
+            flask db upgrade
+            
+      - name: Build frontend
+        run: docker build -f client/Dockerfile -t music-rewrapped-frontend .
+        
+      # Add your deployment steps here

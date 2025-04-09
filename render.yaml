@@ -45,8 +45,12 @@ services:
     env: docker
     dockerfilePath: client/Dockerfile
     buildCommand: ""
-    startCommand: serve -s dist -l 5000
+    startCommand: serve -s dist -l 5000 --single
     plan: standard
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_BASE_URL
         value: "https://music-rewrapped.onrender.com"
