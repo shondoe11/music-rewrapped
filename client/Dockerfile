@@ -3,17 +3,17 @@ FROM node:18-alpine
 WORKDIR /app
 
 #& copy pkg files & install dependencies
-COPY package.json .
-COPY package-lock.json .  
+COPY client/package.json .
+COPY client/package-lock.json .  
 #^ include lock file if avail
 RUN npm install
 
 #~ copy client code & build fr production
-COPY . .
+COPY client/ .
 RUN npm run build
 
 #~ copy serve.json into build output so "serve" will pick it up
-COPY serve.json dist
+COPY client/serve.json dist
 
 #~ install static file server to serve production assets
 RUN npm install -g serve

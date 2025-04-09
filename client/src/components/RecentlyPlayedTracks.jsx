@@ -17,14 +17,14 @@ const RecentlyPlayedTracks = ({ tracks }) => {
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
     if (diffMins < 60) {
-      return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+      return `${diffMins}m ago`; //~ shorter format fr mobile
     } else if (diffHours < 24) {
-      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+      return `${diffHours}h ago`; //~ shorter format fr mobile
     } else if (diffDays < 7) {
-      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+      return `${diffDays}d ago`; //~ shorter format fr mobile
     } else {
+      //~ shorter date format fr older plays
       return date.toLocaleDateString(undefined, { 
-        year: 'numeric', 
         month: 'short', 
         day: 'numeric' 
       });
@@ -46,7 +46,7 @@ const RecentlyPlayedTracks = ({ tracks }) => {
       }`}
     >
       <span
-        className={`mr-4 md:mr-12 font-medium text-sm md:text-base min-w-[4em] md:min-w-[6em] text-center transition-colors duration-300 ${
+        className={`mr-3 md:mr-8 font-medium text-sm md:text-base min-w-[3.5em] md:min-w-[4.5em] text-center transition-colors duration-300 ${
           isSelected ? 'text-green-400' : 'text-gray-500'
         }`}
       >
