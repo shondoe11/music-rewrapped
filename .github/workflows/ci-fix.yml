@@ -38,7 +38,37 @@ jobs:
       - uses: actions/checkout@v3
         
       - name: Build backend
-        run: docker build -f Dockerfile.backend -t music-rewrapped-backend .
+        run: |
+          # Create temporary Dockerfile to fix wheel build issue
+          cat > Dockerfile.backend.temp <<EOL
+          FROM python:3.11-slim
+          
+          # Prevent Python from writing pyc files & enable unbuffered logging
+          ENV PYTHONDONTWRITEBYTECODE=1
+          ENV PYTHONUNBUFFERED=1
+          
+          # Set working dir inside container
+          WORKDIR /app
+          
+          # Install system dependencies
+          RUN apt-get update && apt-get install -y build-essential
+          
+          # Copy & install python dependencies
+          COPY requirements.txt .
+          #! install wheel and setuptools first to avoid bdist_wheel error with Flask-Testing
+          RUN pip install --upgrade pip && pip install wheel setuptools && pip install -r requirements.txt
+          
+          # Copy rest of app code
+          COPY . .
+          
+          # Expose the port Flask app is running (5001)
+          EXPOSE 5001
+          
+          # Run automated db migrations before serving Flask app via gunicorn
+          CMD ["sh", "-c", "flask db upgrade && gunicorn -b 0.0.0.0:5001 server.app:app"]
+          EOL
+          
+          docker build -f Dockerfile.backend.temp -t music-rewrapped-backend .
         
       - name: Run migrations
         run: |
@@ -52,4 +82,4 @@ jobs:
       - name: Build frontend
         run: docker build -f client/Dockerfile -t music-rewrapped-frontend .
         
-      # Add your deployment steps here
+      # Add deployment steps here

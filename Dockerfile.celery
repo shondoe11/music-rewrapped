@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y build-essential
 
 #~ copy & install python dependencies
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+#~ install wheel & setuptools first to avoid bdist_wheel error w Flask-Testing
+RUN pip install --upgrade pip && pip install wheel setuptools && pip install -r requirements.txt
 
 #~ copy entire codebase
 COPY . .
