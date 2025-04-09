@@ -19,6 +19,17 @@ load_dotenv(dotenv_path=f".env.{env}")  #~ load appropriate .env file
 redis_url = os.environ.get('REDIS_URL')
 ssl_cert_reqs = None
 
+#& check if in CI env
+ci_environment = os.environ.get('CI') == 'true'
+
+#& handle CI env Redis URL adjustment
+if ci_environment and redis_url and 'localhost' in redis_url:
+    #~ replace localhost w redis svc name in CI
+    redis_url = redis_url.replace('localhost', 'redis')
+    #~ update env
+    os.environ['REDIS_URL'] = redis_url
+    logging.info("CI environment detected, using Redis service: %s", redis_url)
+
 #& extract ssl param & pass as connection param later
 if redis_url and "ssl_cert_reqs=CERT_REQUIRED" in redis_url:
     #~ remove problem param frm URL
