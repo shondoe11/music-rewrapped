@@ -21,7 +21,7 @@ Flask-Migrate==3.1.0
 Flask-Session==0.8.0
 Flask-SocketIO==5.5.1
 Flask-SQLAlchemy==3.0.2
-Flask-Testing==0.8.1
+# Flask-Testing mv to test-requirements.txt to avoid build issues
 gunicorn==20.1.0
 h11==0.14.0
 idna==3.10
