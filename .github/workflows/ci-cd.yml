@@ -63,21 +63,31 @@ jobs:
 
       - name: run backend migrations
         run: |
-          docker run --rm \
-            -e DATABASE_URL=postgresql+psycopg://postgres:password@localhost:5432/test_db \
-            -e REDIS_URL=redis://localhost:6379/0 \
+          docker network create app_network || true
+          docker run --rm -d --name redis --network app_network redis:latest
+          docker run --rm -d --name postgres --network app_network \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=password \
+            -e POSTGRES_DB=test_db \
+            postgres:16
+          sleep 5
+          docker run --rm --network app_network \
+            -e DATABASE_URL=postgresql+psycopg://postgres:password@postgres:5432/test_db \
+            -e REDIS_URL=redis://redis:6379/0 \
+            -e CI=true \
             music-rewrapped-backend \
             flask db upgrade
         #~ note: if update migrations locally, ensure postgres container is running
 
       - name: run backend integration tests
         run: |
-          docker run --rm \
-            -e DATABASE_URL=postgresql+psycopg://postgres:password@localhost:5432/test_db \
-            -e REDIS_URL=redis://localhost:6379/0 \
+          docker run --rm --network app_network \
+            -e DATABASE_URL=postgresql+psycopg://postgres:password@postgres:5432/test_db \
+            -e REDIS_URL=redis://redis:6379/0 \
+            -e CI=true \
             music-rewrapped-backend \
             pytest tests/integration
-        #~ ensure have tests/integration available in your codebase
+        #~ ensure have tests/integration avail in codebase
 
       - name: run frontend tests
         run: |
