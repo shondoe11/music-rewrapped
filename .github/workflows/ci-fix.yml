@@ -74,8 +74,14 @@ jobs:
         run: |
           docker network create app_network || true
           docker run --rm -d --name redis --network app_network redis:latest
+          docker run --rm -d --name postgres --network app_network \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=test_db \
+            postgres:16
+          sleep 5
           docker run --rm --network app_network \
-            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db \
+            -e DATABASE_URL=postgresql://postgres:postgres@postgres:5432/test_db \
             -e REDIS_URL=redis://redis:6379/0 \
             -e CI=true \
             music-rewrapped-backend \
