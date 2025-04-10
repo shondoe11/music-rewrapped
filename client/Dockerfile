@@ -21,4 +21,5 @@ RUN npm install -g serve
 #~ expose port on which static server will run (e.g., 5000)
 EXPOSE 5000
 
-CMD ["serve", "-s", "dist", "-l", "5000"]
+#~ --single flag to ensure SPA routing works properly on route refreshes
+CMD ["serve", "-s", "dist", "-l", "5000", "--single"]

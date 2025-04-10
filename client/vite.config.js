@@ -10,6 +10,10 @@ export default defineConfig({
     //~ configured dev server handle SPA routing
     historyApiFallback: true,
   },
+  preview: {
+    //~ fr preview server to handle spa routing on reload
+    historyApiFallback: true,
+  },
   //~ ensure builds handle proper SPA routing
   build: {
     rollupOptions: {

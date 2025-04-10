@@ -8,13 +8,16 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "tailwind:init": "tailwindcss init -p"
+    "tailwind:init": "tailwindcss init -p",
+    "serve": "node server.js"
   },
   "dependencies": {
     "@react-spring/web": "^9.7.5",
     "axios": "^1.8.2",
+    "compression": "^1.8.0",
     "core-js": "^3.41.0",
     "d3": "^7.9.0",
+    "express": "^4.21.2",
     "framer-motion": "^12.5.0",
     "gsap": "^3.12.7",
     "ogl": "^1.0.11",
