@@ -19,8 +19,27 @@ class Config(object):
     #& server-side sesh settings
     SESSION_USE_SIGNER = True
     #& if redis url provided (prod), use it; else fallback dev settings
-    if os.environ.get('REDIS_URL'):
-        SESSION_REDIS = redis.Redis.from_url(os.environ.get('REDIS_URL'))
+    redis_url = os.environ.get('REDIS_URL')
+    if redis_url:
+        connection_kwargs = {'decode_responses': True}
+        
+        #~ handle ssl cert requirements fr redis connection
+        if redis_url.startswith('rediss://'):
+            import ssl
+            
+            #~ extract ssl params frm url if present
+            if 'ssl_cert_reqs=CERT_NONE' in redis_url:
+                #~ remove frm url & set explicitly
+                redis_url = redis_url.replace('ssl_cert_reqs=CERT_NONE', '')
+                redis_url = redis_url.replace('&&', '&').rstrip('&?')
+                connection_kwargs['ssl_cert_reqs'] = ssl.CERT_NONE
+            elif 'ssl_cert_reqs=CERT_REQUIRED' in redis_url:
+                #~ remove frm url & set explicitly
+                redis_url = redis_url.replace('ssl_cert_reqs=CERT_REQUIRED', '')
+                redis_url = redis_url.replace('&&', '&').rstrip('&?')
+                connection_kwargs['ssl_cert_reqs'] = ssl.CERT_REQUIRED
+        
+        SESSION_REDIS = redis.Redis.from_url(redis_url, **connection_kwargs)
     else:
         SESSION_REDIS = redis.Redis(
             host=os.environ.get('REDIS_HOST', 'localhost'),
