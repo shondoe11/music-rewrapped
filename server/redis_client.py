@@ -48,10 +48,12 @@ if redis_url:
         connection_kwargs = {
             'decode_responses': True,
             'socket_timeout': 5,
-            'socket_connect_timeout': 5,
-            #~ ssl is required for valkey/aiven redis
-            'ssl': True
+            'socket_connect_timeout': 5
         }
+        
+        #~ ssl is required fr valkey/aiven redis, check if url starts w rediss://
+        if redis_url and redis_url.startswith('rediss://'):
+            ssl_cert_reqs = ssl.CERT_REQUIRED
         
         #& only add ssl params if need
         if ssl_cert_reqs is not None:
