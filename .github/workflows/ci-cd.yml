@@ -80,11 +80,10 @@ jobs:
 
       - name: initialize test data
         run: |
-          # Insert a test user with ID 1 for integration tests
           docker run --rm --network app_network \
             -e PGPASSWORD=password \
             postgres:16 \
-            psql -h postgres -U postgres -d test_db -c "INSERT INTO \"user\" (id, username, email) VALUES (1, 'testuser', 'test@example.com') ON CONFLICT (id) DO NOTHING;"
+            psql -h postgres -U postgres -d test_db -c "INSERT INTO \"user\" (id, username, email, spotify_id) VALUES (1, 'testuser', 'test@example.com', 'test_spotify_id') ON CONFLICT (id) DO NOTHING;"
         #~ note: if update migrations locally, ensure postgres container is running
 
       - name: run backend integration tests
