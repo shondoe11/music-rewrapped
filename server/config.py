@@ -21,7 +21,16 @@ class Config(object):
     #& if redis url provided (prod), use it; else fallback dev settings
     redis_url = os.environ.get('REDIS_URL')
     if redis_url:
+        #~ general redis connection w decode_responses fr normal operations
         connection_kwargs = {'decode_responses': True}
+        
+        #~ separate connection kwargs fr session mgmt (no decoding)
+        session_connection_kwargs = {}
+        
+        #~ if ssl settings specified, apply to both connection types
+        if 'ssl_cert_reqs=CERT_NONE' in redis_url:
+            import ssl
+            session_connection_kwargs['ssl_cert_reqs'] = ssl.CERT_NONE
         
         #~ handle ssl cert requirements fr redis connection
         if redis_url.startswith('rediss://'):
@@ -39,7 +48,8 @@ class Config(object):
                 redis_url = redis_url.replace('&&', '&').rstrip('&?')
                 connection_kwargs['ssl_cert_reqs'] = ssl.CERT_REQUIRED
         
-        SESSION_REDIS = redis.Redis.from_url(redis_url, **connection_kwargs)
+        #~ use session_connection_kwargs w/o decode_responses fr session data
+        SESSION_REDIS = redis.Redis.from_url(redis_url, **session_connection_kwargs)
     else:
         SESSION_REDIS = redis.Redis(
             host=os.environ.get('REDIS_HOST', 'localhost'),
