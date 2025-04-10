@@ -10,7 +10,7 @@ services:
       - key: DATABASE_URL
         fromSecret: neon_database_url
       - key: REDIS_URL
-        fromSecret: upstash_redis_url
+        fromSecret: valkey_redis_url
       - key: SECRET_KEY
         fromSecret: app_secret_key
       - key: JWT_SECRET
@@ -36,7 +36,7 @@ services:
       - key: DATABASE_URL
         fromSecret: neon_database_url
       - key: REDIS_URL
-        fromSecret: upstash_redis_url
+        fromSecret: valkey_redis_url
       - key: SECRET_KEY
         fromSecret: app_secret_key
 
