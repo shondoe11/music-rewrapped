@@ -49,12 +49,8 @@ services:
     plan: standard
     routes:
       - type: rewrite
-        source: /*
-        destination: /index.html
+        source: "/*"
+        destination: "/index.html"
     envVars:
       - key: VITE_BASE_URL
         value: "https://music-rewrapped.onrender.com"
-    routes:
-      - type: rewrite
-        source: "/*"
-        destination: "/index.html"
