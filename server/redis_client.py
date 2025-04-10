@@ -17,6 +17,7 @@ load_dotenv(dotenv_path=f".env.{env}")  #~ load appropriate .env file
 
 #& handle redis SSL cert reqs
 redis_url = os.environ.get('REDIS_URL')
+#~ redis url must be specified in env vars
 ssl_cert_reqs = None
 
 #& check if in CI env
@@ -42,12 +43,14 @@ if redis_url and "ssl_cert_reqs=CERT_REQUIRED" in redis_url:
     os.environ['REDIS_URL'] = redis_url
 
 #& if redis url provided (prod), use it; else fallback dev settings
-if os.environ.get('REDIS_URL'):
+if redis_url:
     try:
         connection_kwargs = {
             'decode_responses': True,
             'socket_timeout': 5,
-            'socket_connect_timeout': 5
+            'socket_connect_timeout': 5,
+            #~ ssl is required for valkey/aiven redis
+            'ssl': True
         }
         
         #& only add ssl params if need
@@ -55,7 +58,7 @@ if os.environ.get('REDIS_URL'):
             connection_kwargs['ssl_cert_reqs'] = ssl_cert_reqs
             
         redis_client = redis.Redis.from_url(
-            os.environ.get('REDIS_URL'),
+            redis_url,
             **connection_kwargs
         )
         redis_client.ping()
