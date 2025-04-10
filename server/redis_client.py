@@ -41,6 +41,16 @@ if redis_url and "ssl_cert_reqs=CERT_REQUIRED" in redis_url:
     ssl_cert_reqs = ssl.CERT_REQUIRED
     #~ update env
     os.environ['REDIS_URL'] = redis_url
+elif redis_url and "ssl_cert_reqs=CERT_NONE" in redis_url:
+    #~ rm problem param frm URL
+    redis_url = redis_url.replace("ssl_cert_reqs=CERT_NONE", "")
+    #~ URL cleanup: remove trailing chars
+    redis_url = redis_url.replace("&&", "&").rstrip("&?")
+    #~ set ssl cert requirement explicitly to CERT_NONE
+    ssl_cert_reqs = ssl.CERT_NONE
+    #~ update env
+    os.environ['REDIS_URL'] = redis_url
+    logging.info("Set SSL certificate requirements to CERT_NONE")
 
 #& if redis url provided (prod), use it; else fallback dev settings
 if redis_url:
