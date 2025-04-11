@@ -33,7 +33,7 @@ const About = () => {
             <div className="bg-gray-800/40 backdrop-blur-xl p-8 rounded-xl border border-gray-700/50 shadow-lg mb-10">
                 <h2 className="text-2xl font-semibold mb-4 text-green-400">What is Music Re-Wrapped?</h2>
                 <p className="text-white mb-6">
-                Music Re-Wrapped is a personalized music analytics platform that gives you deeper insights into your listening habits. Unlike Spotify Wrapped, which provides an annual summary, Music Re-Wrapped continuously analyzes your music data to give you real-time understanding of your musical journey.
+                Music Re-Wrapped is a personalized music analytics platform that gives you deeper insights into your listening habits. Unlike most platforms, which provides an annual summary, Music Re-Wrapped continuously analyzes your music data to give you real-time understanding of your musical journey.
                 </p>
                 <p className="text-white mb-6">
                 Whether you're curious about your listening trends, want to discover patterns in your music taste, or are looking for personalized event recommendations based on your favorite artists, Music Re-Wrapped transforms your Spotify data into beautiful, interactive visualizations.

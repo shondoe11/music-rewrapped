@@ -13,7 +13,10 @@ const getMousePos = (e, container) => {
       y: e.clientY - bounds.top,
     };
   }
-  return { x: e.clientX, y: e.clientY };
+  return {
+    x: e.clientX,
+    y: e.clientY,
+  };
 };
 
 const Crosshair = ({ color = "white", containerRef = null }) => {
@@ -22,8 +25,6 @@ const Crosshair = ({ color = "white", containerRef = null }) => {
   const lineVerticalRef = useRef(null);
   const filterXRef = useRef(null);
   const filterYRef = useRef(null);
-
-  let mouse = { x: 0, y: 0 };
 
   useEffect(() => {
     const handleMouseMove = (ev) => {
@@ -51,9 +52,10 @@ const Crosshair = ({ color = "white", containerRef = null }) => {
       }
     };
 
-    const target = containerRef?.current || window;
+    const target = containerRef?.current || document;
     target.addEventListener("mousemove", handleMouseMove);
 
+    let mouse = { x: 0, y: 0 };
     const renderedStyles = {
       tx: { previous: 0, current: 0, amt: 0.15 },
       ty: { previous: 0, current: 0, amt: 0.15 },
@@ -110,8 +112,7 @@ const Crosshair = ({ color = "white", containerRef = null }) => {
         },
         onComplete: () => {
           if (lineHorizontalRef.current && lineVerticalRef.current) {
-            lineHorizontalRef.current.style.filter =
-              lineVerticalRef.current.style.filter = "none";
+            lineHorizontalRef.current.style.filter = lineVerticalRef.current.style.filter = "none";
           }
         },
       })
@@ -137,12 +138,11 @@ const Crosshair = ({ color = "white", containerRef = null }) => {
         );
       }
 
-      if (lineVerticalRef.current) {
+      if (lineVerticalRef.current && lineHorizontalRef.current) {
         gsap.set(lineVerticalRef.current, { x: renderedStyles.tx.previous });
-      }
-      if (lineHorizontalRef.current) {
         gsap.set(lineHorizontalRef.current, { y: renderedStyles.ty.previous });
       }
+
       requestAnimationFrame(render);
     };
 
@@ -168,7 +168,9 @@ const Crosshair = ({ color = "white", containerRef = null }) => {
   return (
     <div
       ref={cursorRef}
-      className={`${containerRef ? "absolute" : "fixed"} top-0 left-0 w-full h-full pointer-events-none z-[10000]`}
+      className={`${
+        containerRef ? "absolute" : "fixed"
+      } top-0 left-0 w-full h-full pointer-events-none z-[10000]`}
     >
       <svg className="absolute top-0 left-0 w-full h-full">
         <defs>
@@ -194,12 +196,12 @@ const Crosshair = ({ color = "white", containerRef = null }) => {
       </svg>
       <div
         ref={lineHorizontalRef}
-        className="absolute w-full h-px pointer-events-none opacity-0 transform translate-y-1/2"
+        className={`absolute w-full h-px pointer-events-none opacity-0 transform translate-y-1/2`}
         style={{ background: color }}
       ></div>
       <div
         ref={lineVerticalRef}
-        className="absolute h-full w-px pointer-events-none opacity-0 transform translate-x-1/2"
+        className={`absolute h-full w-px pointer-events-none opacity-0 transform translate-x-1/2`}
         style={{ background: color }}
       ></div>
     </div>

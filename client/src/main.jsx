@@ -7,39 +7,25 @@ import './globals.css';
 import './styles/browser-compatibility.css';
 //* use spotify design guidelines for fonts/colors as per https://developer.spotify.com/documentation/design
 import { AuthProvider } from './context/AuthProvider.jsx';
+import { storeTokenToStorage } from './context/AuthUtils';
 import 'react-toastify/dist/ReactToastify.css';
-import { Bounce, Flip, Slide, ToastContainer, Zoom } from 'react-toastify';
+import { Flip, ToastContainer } from 'react-toastify';
 import ClickSpark from './styles/animations/ClickSpark.jsx';
 import { isSafari, isFirefox, applyCompatibilityClasses } from './utils/browserDetection';
 
-//& extract token frm URL params
+//& extract token frm URL params & clean URL
 const extractAndStoreToken = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('token');
   
   if (token) {
-    console.log('Token found in URL, storing it');
-    //~ store in multiple places fr cross-browser compatibility
-    try {
-      //~ local storage (primary)
-      localStorage.setItem('jwt_token', token);
-      
-      //~ session storage (fallback)
-      sessionStorage.setItem('jwt_token', token);
-      
-      //~ cookie (for safari/firefox)
-      document.cookie = `jwt_token=${token}; path=/; max-age=86400; SameSite=Lax`;
-      
-      //~ clean URL to rmv token param
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-      
-      return token;
-    } catch (error) {
-      console.error('Error storing token:', error);
-    }
+    //~ centralized token storage fn
+    storeTokenToStorage(token);
+    
+    //~ clean URL to rmv token param
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
-  return null;
+  return token || null;
 };
 
 //& extract token before rendering

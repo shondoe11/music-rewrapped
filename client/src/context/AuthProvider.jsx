@@ -1,42 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { AuthContext } from "./AuthContext";
+import { getTokenFromStorage, storeTokenToStorage, clearTokenFromStorage } from "./AuthUtils";
 
 export const AuthProvider = ({ children, initialToken }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  //& store token w cross-browser compatibility
-  const storeToken = (token) => {
-    try {
-      localStorage.setItem('jwt_token', token);
-    } catch (e) {
-      console.warn('localStorage failed, trying sessionStorage', e);
-      try {
-        sessionStorage.setItem('jwt_token', token);
-      } catch (e) {
-        console.error('All storage methods failed', e);
-      }
-    }
-    
-    //~ also set as regular cookie fr Safari/Firefox
-    document.cookie = `jwt_token=${token}; path=/; max-age=${60*60*24}; SameSite=Lax`;
-  };
+  const storeToken = storeTokenToStorage;
 
-  //& get token frm any avail storage method
-  const getToken = () => {
-    let token = localStorage.getItem('jwt_token');
-    
-    if (!token) {
-      token = sessionStorage.getItem('jwt_token');
-    }
-    
-    if (!token) {
-      const match = document.cookie.match(new RegExp('(^| )jwt_token=([^;]+)'));
-      if (match) token = match[2];
-    }
-    
-    return token;
-  };
+  const getToken = getTokenFromStorage;
 
   //& decode JWT & fetch user info
   const fetchUserFromToken = async (token) => {
@@ -156,7 +128,7 @@ export const AuthProvider = ({ children, initialToken }) => {
     };
     
     loadUser();
-  }, [initialToken]);
+  }, [initialToken, getToken]);
 
   const login = (userData, token) => {
     if (token) {
@@ -171,9 +143,7 @@ export const AuthProvider = ({ children, initialToken }) => {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('jwt_token');
-    sessionStorage.removeItem('jwt_token');
-    document.cookie = 'jwt_token=; path=/; max-age=0';
+    clearTokenFromStorage();
   };
 
   return (

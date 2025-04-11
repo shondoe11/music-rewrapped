@@ -6,17 +6,17 @@ import Aurora from "../styles/backgrounds/Aurora";
 import Magnet from "../styles/animations/Magnet";
 import RotatingText from "../styles/text-animations/RotatingText";
 import GradientText from "../styles/text-animations/GradientText";
-import Crosshair from "../styles/animations/Crosshair";
 import SplashCursor from "../styles/animations/SplashCursor";
 import { useAuth } from "../hooks/useAuth";
+import Crosshair from "../styles/animations/Crosshair";
 
 const SpotifyLogin = () => {
   const navigate = useNavigate();
-  const { login, storeToken } = useAuth();
+  const { storeToken } = useAuth();
+  const [showCrosshair, setShowCrosshair] = useState(false);
   const containerRef = useRef(null);
   const buttonRef = useRef(null);
   const learnMoreTextRef = useRef(null);
-  const [showCrosshair, setShowCrosshair] = useState(false);
 
   useEffect(() => {
     //& check fr token in URL params (frm OAuth redirect)
@@ -51,22 +51,23 @@ const SpotifyLogin = () => {
       }
     }
   }, [navigate, storeToken]);
-
+  
+  //& handle mouse movement & show crosshair
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (learnMoreTextRef.current) {
-        const textRect = learnMoreTextRef.current.getBoundingClientRect();
-        setShowCrosshair(e.clientY > textRect.bottom);
+    const handleMouseMove = () => {
+      if (!showCrosshair) {
+        setShowCrosshair(true);
       }
     };
-
+    
     window.addEventListener('mousemove', handleMouseMove);
     
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
     };
-  }, []);
+  }, [showCrosshair]);
 
+  
   const handleLogin = () => {
     const baseUrl = import.meta.env.VITE_BASE_URL || 'https://music-rewrapped.onrender.com';
     
@@ -91,13 +92,8 @@ const SpotifyLogin = () => {
       SPLAT_FORCE={9000}
       TRANSPARENT={true}
       />
-      {showCrosshair && (
-        <Crosshair 
-          containerRef={containerRef} 
-          color="#1DB954" 
-        />
-      )}
-      
+      {showCrosshair && <Crosshair containerRef={containerRef} color="rgba(255, 255, 255, 0.4)" />}
+
       <div className="absolute top-0 left-0 w-full h-full -z-10 bg-black">
         <Aurora
           colorStops={["#191414", "#1DB954", "#FFFFFF"]}
