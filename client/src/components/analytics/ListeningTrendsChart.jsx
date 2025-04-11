@@ -42,7 +42,7 @@ const ListeningTrendsChart = ({ userId }) => {
         d3.select(svgRef.current).selectAll("*").remove();
         
         //~ set up dimensions & margins
-        const margin = { top: 20, right: 60, bottom: 70, left: 60 };
+        const margin = { top: 20, right: 60, bottom: 90, left: 60 };
         const width = 900 - margin.left - margin.right;
         const height = 420 - margin.top - margin.bottom;
         
@@ -311,7 +311,7 @@ const ListeningTrendsChart = ({ userId }) => {
             
         //~ add legend
         const legend = svg.append("g")
-            .attr("transform", `translate(${width / 2 - 100}, ${height + 40})`);
+            .attr("transform", `translate(${width / 2 - 100}, ${height + 60})`);
             
         //~ tracks legend
         legend.append("circle")
@@ -402,14 +402,14 @@ const ListeningTrendsChart = ({ userId }) => {
                 </motion.h3>
                 
                 <motion.div 
-                    className="flex space-x-1 sm:space-x-2 bg-gray-900/50 p-1 rounded-lg w-full sm:w-auto justify-around sm:justify-start"
+                    className="flex bg-gray-900/50 p-1 rounded-lg w-full sm:w-auto sm:space-x-2 justify-between sm:justify-start"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: 0.3 }}
                 >
                     <button
                         onClick={() => setTimeFrame('daily')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
+                        className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
                             timeFrame === 'daily' 
                             ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
                             : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
@@ -419,7 +419,7 @@ const ListeningTrendsChart = ({ userId }) => {
                     </button>
                     <button
                         onClick={() => setTimeFrame('weekly')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
+                        className={`flex-1 sm:flex-none mx-1 sm:mx-0 px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
                             timeFrame === 'weekly' 
                             ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
                             : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
@@ -429,7 +429,7 @@ const ListeningTrendsChart = ({ userId }) => {
                     </button>
                     <button
                         onClick={() => setTimeFrame('monthly')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
+                        className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
                             timeFrame === 'monthly' 
                             ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
                             : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
