@@ -5,6 +5,20 @@
   <link rel="icon" type="image/svg+xml" href="./src/assets/music-solid.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Music Re-Wrapped</title>
+  <script>
+    // check fr redirect path stored in session storage
+    (function() {
+      const redirectPath = sessionStorage.getItem('redirect_path');
+      if (redirectPath) {
+        sessionStorage.removeItem('redirect_path');
+        const cleanPath = redirectPath.replace(/\/+$/, '');
+        if (cleanPath !== '' && cleanPath !== '/') {
+          // set up history so react router can pick up correct route
+          window.history.replaceState(null, null, cleanPath);
+        }
+      }
+    })();
+  </script>
 </head>
 <body>
   <div id="root"></div>

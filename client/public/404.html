@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirecting...</title>
+  <script>
+    // redirect all routes to spa root 
+    const path = window.location.pathname;
+    sessionStorage.setItem('redirect_path', path);
+    window.location.href = '/';
+  </script>
+</head>
+<body>
+  <p>Redirecting you to the application...</p>
+</body>
+</html>
