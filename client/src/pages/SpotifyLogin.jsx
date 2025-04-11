@@ -92,7 +92,7 @@ const SpotifyLogin = () => {
       SPLAT_FORCE={9000}
       TRANSPARENT={true}
       />
-      {showCrosshair && <Crosshair containerRef={containerRef} color="rgba(255, 255, 255, 0.4)" />}
+      {showCrosshair && <Crosshair containerRef={containerRef} color="rgba(0, 255, 255, 0.4)" />}
 
       <div className="absolute top-0 left-0 w-full h-full -z-10 bg-black">
         <Aurora
