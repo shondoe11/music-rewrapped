@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import ScrollReset from './components/utils/ScrollReset';
 import Home from './pages/Home';
 import SpotifyLogin from './pages/SpotifyLogin';
 import Login from './pages/Login';
@@ -44,6 +45,7 @@ function App() {
   return (
     <UserProvider>
       <Router>
+        <ScrollReset />
         <Navbar />
         <Routes>
           <Route path='/' element={<RootRedirect />} />
