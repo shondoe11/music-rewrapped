@@ -12,20 +12,20 @@ RUN npm install
 COPY client/ .
 RUN npm run build
 
+#& _redirects file - fr spa routing
+RUN echo '/* /index.html 200' > dist/_redirects
+
+#~ additional spa routing support
+COPY client/netlify.toml dist/
+
 #~ explicit fallback fr SPA routing
 RUN echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=/"></head><body>Redirecting...</body></html>' > dist/404.html
 
-#~ copy serve.json into build output so "serve" will pick it up
-COPY client/serve.json dist/
-
-#~ make sure serve.json is in root of dist dir
-RUN ls -la dist/
-
-#~ install static file server to serve production assets
-RUN npm install -g serve
+#~ install sirv better spa routing handling
+RUN npm install -g sirv-cli
 
 #~ expose port on which static server will run (e.g., 5000)
 EXPOSE 5000
 
-#~ --single flag w explicit config path fr SPA routing
-CMD ["serve", "-s", "dist", "-l", "5000", "--single", "--config", "dist/serve.json"]
+#~ sirv w single-page app mode
+CMD ["sirv", "dist", "--port", "5000", "--single"]
