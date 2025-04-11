@@ -56,4 +56,4 @@ services:
         value: no-store, no-cache, must-revalidate
     envVars:
       - key: VITE_BASE_URL
-        value: "https://music-rewrapped.onrender.com"
+        value: "https://music-rewrapped-backend.onrender.com"
