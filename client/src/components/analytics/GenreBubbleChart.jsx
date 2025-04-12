@@ -10,10 +10,21 @@ const GenreBubbleChart = ({ userId }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [timeRange, setTimeRange] = useState('medium_term');
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     
     const svgRef = useRef();
     const tooltipRef = useRef();
     const containerRef = useRef();
+    
+    //& handle window resize
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     
     //& fetch data on time range change
     useEffect(() => {
@@ -42,15 +53,16 @@ const GenreBubbleChart = ({ userId }) => {
 
         //~ use container dimensions for more responsive sizing
         const containerWidth = containerRef.current ? containerRef.current.clientWidth : 900;
-        const width = Math.max(900, containerWidth);
-        const height = 550; //~ increased height
+        const isMobile = window.innerWidth < 768;   
+        const width = isMobile ? containerWidth : Math.max(1000, containerWidth * 1.2);
+        const height = isMobile ? containerWidth * 2 : 600;
         
         //~ SVG container
         const svg = d3.select(svgRef.current)
             .attr("viewBox", `0 0 ${width} ${height}`)
             .attr("width", "100%")
             .attr("height", height)
-            .attr("preserveAspectRatio", "xMidYMid meet")
+            .attr("preserveAspectRatio", isMobile ? "xMidYMin meet" : "xMidYMid meet")
             
         //~ hierarchy data structure fr bubble layout
         const hierarchy = {
@@ -64,7 +76,7 @@ const GenreBubbleChart = ({ userId }) => {
         //~ bubble layout w reduced padding fr larger bubbles
         const bubble = d3.pack()
             .size([width, height])
-            .padding(4);
+            .padding(isMobile ? 2 : 4);
             
         //~ process data fr bubble layout
         const root = d3.hierarchy(hierarchy)
@@ -338,8 +350,8 @@ const GenreBubbleChart = ({ userId }) => {
                 </motion.div>
             </div>
             
-            <div className="relative overflow-hidden rounded-lg -mx-2 sm:mx-0">
-                <svg ref={svgRef} width="100%" height="550" className="overflow-visible"></svg>
+            <div className={`relative rounded-lg -mx-2 sm:mx-0 ${isMobile ? 'overflow-auto max-h-[70vh] pb-4' : 'overflow-hidden'}`}>
+                <svg ref={svgRef} width="100%" height={isMobile ? "200vh" : "600"} className="overflow-visible"></svg>
                 <div
                     ref={tooltipRef}
                     className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"

@@ -105,10 +105,10 @@ const ListeningHeatmap = ({ userId }) => {
             .style("font-size", isMobile ? "9px" : "10px")
             .text((d, i) => isMobile ? (i % 6 === 0 ? d : '') : (i % 3 === 0 ? d : '')); //~ show fewer hours on mobile
 
-        //~ add title
+        //~ add title w increased spacing on desktop
         svg.append("text")
             .attr("x", width / 2)
-            .attr("y", -20)
+            .attr("y", isMobile ? -15 : -10)
             .style("text-anchor", "middle")
             .style("fill", "white")
             .style("font-size", "16px")
