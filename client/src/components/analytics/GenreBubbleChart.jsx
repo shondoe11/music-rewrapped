@@ -57,8 +57,8 @@ const GenreBubbleChart = ({ userId }) => {
         //~ optimize dimensions fr maximum bubble size
         //~ on mobile: use square fr best packing w slightly taller height
         //~ on desktop: use wide rectangle fr best viewing
-        const width = isMobile ? containerWidth - 20 : Math.max(1000, containerWidth * 1.1);
-        const height = isMobile ? width * 1.6 : 600;
+        const width = isMobile ? containerWidth - 5 : Math.max(1000, containerWidth * 1.1);
+        const height = isMobile ? width * 1.8 : 650;
         
         //~ SVG container - expanded to fill all avail space
         const svg = d3.select(svgRef.current)
@@ -76,10 +76,10 @@ const GenreBubbleChart = ({ userId }) => {
             }))
         };
         
-        //~ bubble layout w minimal padding fr largest possible bubbles
+        //~ bubble layout w increased spacing between bubbles
         const bubble = d3.pack()
             .size([width, height])
-            .padding(isMobile ? 1 : 3);
+            .padding(isMobile ? 3 : 5);
             
         //~ process data fr bubble layout w modified sizing algorithm
         //~ apply sq root scale to boost smaller values while keeping large ones similar
@@ -258,7 +258,7 @@ const GenreBubbleChart = ({ userId }) => {
             });
             
         //~ add text labels but only fr larger bubbles w improved text readability
-        nodes.filter(d => d.r > 30)
+        nodes.filter(d => d.r > 25)
             .append('text')
             .attr('text-anchor', 'middle')
             .attr('dy', '.3em')
@@ -306,7 +306,7 @@ const GenreBubbleChart = ({ userId }) => {
     return (
         <motion.div 
             ref={containerRef}
-            className="bg-gray-800/40 backdrop-blur-xl p-3 sm:p-6 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-purple-500/5 transition-all duration-300"
+            className="bg-gray-800/40 backdrop-blur-xl p-1 sm:p-3 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-purple-500/5 transition-all duration-300"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -360,8 +360,8 @@ const GenreBubbleChart = ({ userId }) => {
                 </motion.div>
             </div>
             
-            <div className={`relative rounded-lg ${isMobile ? '-mx-2 overflow-visible' : 'overflow-hidden'}`}>
-                <svg ref={svgRef} width="100%" height={isMobile ? "160%" : "600"} className="overflow-visible"></svg>
+            <div className={`relative rounded-lg ${isMobile ? '-mx-4 overflow-visible' : '-mx-4 overflow-visible'}`}>
+                <svg ref={svgRef} width="calc(100% + 32px)" height={isMobile ? "180%" : "650"} className="overflow-visible -ml-4"></svg>
                 <div
                     ref={tooltipRef}
                     className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"
@@ -369,7 +369,7 @@ const GenreBubbleChart = ({ userId }) => {
                 ></div>
             </div>
             
-            <div className="mt-6 text-sm text-gray-400 border-t border-gray-700/30 pt-4">
+            <div className="mt-4 text-sm text-gray-400 border-t border-gray-700/30 pt-3">
                 <p>
                     This visualization shows your listening distribution across different genres. 
                     Larger bubbles represent genres you listen to more frequently. 
