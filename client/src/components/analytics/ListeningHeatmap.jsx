@@ -45,16 +45,22 @@ const ListeningHeatmap = ({ userId }) => {
         d3.select(svgRef.current).selectAll("*").remove();
         
         //~ set dimensions & margins
-        const margin = { top: 40, right: 40, bottom: 50, left: 100 };
+        const isMobile = window.innerWidth < 768;
+        const margin = { 
+            top: 40, 
+            right: isMobile ? 20 : 40, 
+            bottom: 50, 
+            left: isMobile ? 60 : 100 
+        };
         const width = 900 - margin.left - margin.right;
-        const height = 440 - margin.top - margin.bottom;
+        const height = 460 - margin.top - margin.bottom;
         
         const cellWidth = width / 24;
         const cellHeight = height / 7;
         
         //~ create SVG container
         const svg = d3.select(svgRef.current)
-            .attr("viewBox", `0 0 900 440`)
+            .attr("viewBox", `0 0 900 460`)
             .append("g")
             .attr("transform", `translate(${margin.left}, ${margin.top})`);
         
@@ -81,8 +87,8 @@ const ListeningHeatmap = ({ userId }) => {
             .style("text-anchor", "end")
             .style("dominant-baseline", "middle")
             .style("fill", "#ccc")
-            .style("font-size", "12px")
-            .text(d => d);
+            .style("font-size", isMobile ? "10px" : "12px")
+            .text(d => isMobile ? d.substring(0, 3) : d); //~ show abbreviated day names on mobile
 
         //~ add hour labels (x-axis)
         svg.selectAll(".hour-label")
@@ -94,8 +100,8 @@ const ListeningHeatmap = ({ userId }) => {
             .attr("y", height + 15)
             .style("text-anchor", "middle")
             .style("fill", "#ccc")
-            .style("font-size", "10px")
-            .text((d, i) => i % 3 === 0 ? d : ''); //~ only show every 3rd hour fr cleaner axis
+            .style("font-size", isMobile ? "9px" : "10px")
+            .text((d, i) => isMobile ? (i % 6 === 0 ? d : '') : (i % 3 === 0 ? d : '')); //~ show fewer hours on mobile
 
         //~ add title
         svg.append("text")
@@ -120,10 +126,10 @@ const ListeningHeatmap = ({ userId }) => {
             .attr("class", "heatmap-cell")
             .attr("x", d => d.hour * cellWidth)
             .attr("y", d => d.day * cellHeight)
-            .attr("width", cellWidth - 1)
-            .attr("height", cellHeight - 1)
-            .attr("rx", 3) //~ more rounded corners
-            .attr("ry", 3)
+            .attr("width", cellWidth - (isMobile ? 0.5 : 1))
+            .attr("height", cellHeight - (isMobile ? 0.5 : 1))
+            .attr("rx", isMobile ? 2 : 3) //~ slightly smaller rounded corners on mobile
+            .attr("ry", isMobile ? 2 : 3)
             .attr("fill", d => d.value > 0 ? colorScale(d.value) : "#1e293b")
             .attr("stroke", "#0f172a")
             .attr("stroke-width", 1)
@@ -206,7 +212,7 @@ const ListeningHeatmap = ({ userId }) => {
 
         //& draw legend rectangle w gradient
         svg.append("rect")
-            .attr("x", legendX)
+            .attr("x", isMobile ? width/2 - legendWidth/2 : legendX)
             .attr("y", legendY)
             .attr("width", legendWidth)
             .attr("height", legendHeight)
@@ -216,7 +222,7 @@ const ListeningHeatmap = ({ userId }) => {
 
         //& add legend labels
         svg.append("text")
-            .attr("x", legendX)
+            .attr("x", isMobile ? width/2 - legendWidth/2 : legendX)
             .attr("y", legendY - 5)
             .style("text-anchor", "start")
             .style("fill", "#ccc")
@@ -224,7 +230,7 @@ const ListeningHeatmap = ({ userId }) => {
             .text("0");
             
         svg.append("text")
-            .attr("x", legendX + legendWidth)
+            .attr("x", isMobile ? width/2 + legendWidth/2 : legendX + legendWidth)
             .attr("y", legendY - 5)
             .style("text-anchor", "end")
             .style("fill", "#ccc")
@@ -232,7 +238,7 @@ const ListeningHeatmap = ({ userId }) => {
             .text(`${data.maxValue}`);
             
         svg.append("text")
-            .attr("x", legendX + legendWidth / 2)
+            .attr("x", isMobile ? width/2 : legendX + legendWidth / 2)
             .attr("y", legendY - 5)
             .style("text-anchor", "middle")
             .style("fill", "#ccc")
@@ -269,7 +275,7 @@ const ListeningHeatmap = ({ userId }) => {
 
         return (
             <motion.div 
-                className="bg-gray-800/40 backdrop-blur-xl p-6 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-blue-500/5 transition-all duration-300"
+                className="bg-gray-800/40 backdrop-blur-xl p-3 sm:p-6 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-blue-500/5 transition-all duration-300"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
@@ -311,8 +317,8 @@ const ListeningHeatmap = ({ userId }) => {
                     </motion.div>
                 </div>
                 
-                <div className="relative overflow-hidden">
-                    <svg ref={svgRef} width="100%" height="440" className="overflow-visible"></svg>
+                <div className="relative overflow-hidden -mx-2 sm:mx-0">
+                    <svg ref={svgRef} width="100%" height="460" className="overflow-visible"></svg>
                     <div
                         ref={tooltipRef}
                         className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"
