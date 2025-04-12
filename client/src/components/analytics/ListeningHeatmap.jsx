@@ -189,7 +189,7 @@ const ListeningHeatmap = ({ userId }) => {
         const legendWidth = 200;
         const legendHeight = 20;
         const legendX = width - legendWidth;
-        const legendY = height + 30;
+        const legendY = height + 40;
 
         //& create gradient fr legend
         const defs = svg.append("defs");

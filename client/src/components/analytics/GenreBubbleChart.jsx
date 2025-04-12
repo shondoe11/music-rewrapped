@@ -40,8 +40,10 @@ const GenreBubbleChart = ({ userId }) => {
         //~ clear prev chart
         d3.select(svgRef.current).selectAll("*").remove();
 
-        const width = 900;
-        const height = 500;
+        //~ use container dimensions for more responsive sizing
+        const containerWidth = containerRef.current ? containerRef.current.clientWidth : 900;
+        const width = Math.max(900, containerWidth);
+        const height = 550; //~ increased height
         
         //~ SVG container
         const svg = d3.select(svgRef.current)
@@ -59,10 +61,10 @@ const GenreBubbleChart = ({ userId }) => {
             }))
         };
         
-        //~ bubble layout
+        //~ bubble layout w reduced padding fr larger bubbles
         const bubble = d3.pack()
             .size([width, height])
-            .padding(8);
+            .padding(4);
             
         //~ process data fr bubble layout
         const root = d3.hierarchy(hierarchy)
@@ -139,8 +141,6 @@ const GenreBubbleChart = ({ userId }) => {
             const gradientId = `bubble-gradient-${i}`;
             const baseColor = color(d.data.name);
             
-            const baseHex = baseColor.substring(1);
-            
             let lighterColor;
             try {
                 const rgb = d3.rgb(baseColor);
@@ -149,7 +149,8 @@ const GenreBubbleChart = ({ userId }) => {
                     Math.min(255, rgb.g + 40),
                     Math.min(255, rgb.b + 40)
                 ).formatHex();
-            } catch (e) {
+            } catch {
+                //~ silently handle error and use fallback
                 lighterColor = baseColor;
             }
             
@@ -185,7 +186,7 @@ const GenreBubbleChart = ({ userId }) => {
             .delay((d, i) => i * 30)
             .ease(d3.easeBounceOut)
             .attr('r', d => d.r)
-            .on('end', function(d) {
+            .on('end', function() {
                 d3.select(this)
                     .on('mouseover', function(event, d) {
                         const chartRect = svgRef.current.getBoundingClientRect();
@@ -283,7 +284,7 @@ const GenreBubbleChart = ({ userId }) => {
     return (
         <motion.div 
             ref={containerRef}
-            className="bg-gray-800/40 backdrop-blur-xl p-6 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-purple-500/5 transition-all duration-300"
+            className="bg-gray-800/40 backdrop-blur-xl p-3 sm:p-6 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-purple-500/5 transition-all duration-300"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -299,14 +300,14 @@ const GenreBubbleChart = ({ userId }) => {
                 </motion.h3>
                 
                 <motion.div 
-                    className="flex space-x-2 bg-gray-900/50 p-1 rounded-lg"
+                    className="flex bg-gray-900/50 p-1 rounded-lg w-full justify-between"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: 0.3 }}
                 >
                     <button
                         onClick={() => setTimeRange('short_term')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
+                        className={`flex-1 px-4 py-1.5 rounded-l-md rounded-r-none text-sm font-medium transition-all duration-300 ${
                             timeRange === 'short_term' 
                             ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md' 
                             : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
@@ -316,7 +317,7 @@ const GenreBubbleChart = ({ userId }) => {
                     </button>
                     <button
                         onClick={() => setTimeRange('medium_term')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
+                        className={`flex-1 px-4 py-1.5 rounded-none border-l border-r border-gray-700/30 text-sm font-medium transition-all duration-300 ${
                             timeRange === 'medium_term' 
                             ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md' 
                             : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
@@ -326,7 +327,7 @@ const GenreBubbleChart = ({ userId }) => {
                     </button>
                     <button
                         onClick={() => setTimeRange('long_term')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
+                        className={`flex-1 px-4 py-1.5 rounded-l-none rounded-r-md text-sm font-medium transition-all duration-300 ${
                             timeRange === 'long_term' 
                             ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md' 
                             : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
@@ -337,8 +338,8 @@ const GenreBubbleChart = ({ userId }) => {
                 </motion.div>
             </div>
             
-            <div className="relative overflow-hidden rounded-lg">
-                <svg ref={svgRef} width="100%" height="500" className="overflow-visible"></svg>
+            <div className="relative overflow-hidden rounded-lg -mx-2 sm:mx-0">
+                <svg ref={svgRef} width="100%" height="550" className="overflow-visible"></svg>
                 <div
                     ref={tooltipRef}
                     className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"
