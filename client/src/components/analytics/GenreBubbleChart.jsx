@@ -54,8 +54,11 @@ const GenreBubbleChart = ({ userId }) => {
         //~ use container dimensions for more responsive sizing
         const containerWidth = containerRef.current ? containerRef.current.clientWidth : 900;
         const isMobile = window.innerWidth < 768;   
-        const width = isMobile ? containerWidth : Math.max(1000, containerWidth * 1.2);
-        const height = isMobile ? containerWidth * 2 : 600;
+        //~ optimize dimensions fr maximum bubble size
+        //~ on mobile: use square fr best packing w slightly taller height
+        //~ on desktop: use wide rectangle fr best viewing
+        const width = isMobile ? containerWidth - 20 : Math.max(1000, containerWidth * 1.2);
+        const height = isMobile ? width * 1.6 : 600;
         
         //~ SVG container
         const svg = d3.select(svgRef.current)
@@ -73,10 +76,10 @@ const GenreBubbleChart = ({ userId }) => {
             }))
         };
         
-        //~ bubble layout w reduced padding fr larger bubbles
+        //~ bubble layout w minimal padding fr largest possible bubbles
         const bubble = d3.pack()
             .size([width, height])
-            .padding(isMobile ? 2 : 4);
+            .padding(isMobile ? 1 : 3);
             
         //~ process data fr bubble layout
         const root = d3.hierarchy(hierarchy)
@@ -115,8 +118,8 @@ const GenreBubbleChart = ({ userId }) => {
             .attr("width", width)
             .attr("height", height)
             .attr("fill", "url(#bubble-background)")
-            .attr("rx", 15)
-            .attr("ry", 15)
+            .attr("rx", isMobile ? 8 : 15)
+            .attr("ry", isMobile ? 8 : 15)
             .attr("opacity", 0.05);
             
         //~ define gradients
@@ -350,8 +353,8 @@ const GenreBubbleChart = ({ userId }) => {
                 </motion.div>
             </div>
             
-            <div className={`relative rounded-lg -mx-2 sm:mx-0 ${isMobile ? 'overflow-auto max-h-[70vh] pb-4' : 'overflow-hidden'}`}>
-                <svg ref={svgRef} width="100%" height={isMobile ? "200vh" : "600"} className="overflow-visible"></svg>
+            <div className={`relative rounded-lg ${isMobile ? '-mx-3 overflow-visible' : '-mx-2 sm:mx-0 overflow-hidden'}`}>
+                <svg ref={svgRef} width="100%" height={isMobile ? "160%" : "600"} className="overflow-visible"></svg>
                 <div
                     ref={tooltipRef}
                     className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"
