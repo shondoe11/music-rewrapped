@@ -57,8 +57,8 @@ const GenreBubbleChart = ({ userId }) => {
         //~ optimize dimensions fr maximum bubble size
         //~ on mobile: use square fr best packing w slightly taller height
         //~ on desktop: use wide rectangle fr best viewing
-        const width = isMobile ? containerWidth - 5 : Math.max(1000, containerWidth * 1.1);
-        const height = isMobile ? width * 1.8 : 650;
+        const width = isMobile ? containerWidth + 10 : Math.max(1000, containerWidth * 1.2);
+        const height = isMobile ? width * 2 : 700;
         
         //~ SVG container - expanded to fill all avail space
         const svg = d3.select(svgRef.current)
@@ -79,22 +79,24 @@ const GenreBubbleChart = ({ userId }) => {
         //~ bubble layout w increased spacing between bubbles
         const bubble = d3.pack()
             .size([width, height])
-            .padding(isMobile ? 3 : 5);
-            
-        //~ process data fr bubble layout w modified sizing algorithm
-        //~ apply sq root scale to boost smaller values while keeping large ones similar
+            .padding(isMobile ? 4 : 6);
+        //~ calculate total listening time for percentage calculation
+        const totalMinutes = data.reduce((sum, item) => sum + item.minutes, 0);
         const root = d3.hierarchy(hierarchy)
             .sum(d => {
                 const originalValue = d.value;
                 if (originalValue < data[1]?.minutes * 0.95) {
-                    return Math.pow(originalValue, 0.8) * 2;
+                    return Math.pow(originalValue, 0.7) * 3;
                 }
                 return originalValue;
             })
             .sort((a, b) => b.value - a.value);
             
+        //~ store original percentages for tooltip display
+        root.children.forEach(node => {
+            node.percentage = (node.data.value / totalMinutes) * 100;
+        });
         bubble(root);
-        
         //~ custom color palette
         const colorPalette = [
             "#10B981",
@@ -230,7 +232,7 @@ const GenreBubbleChart = ({ userId }) => {
                                 <div class="font-medium text-lg" style="color:${color(d.data.name)}">${d.data.name}</div>
                                 <div class="mt-1 text-gray-200">${Math.round(d.data.value)} minutes listened</div>
                                 <div class="text-gray-300">${Math.round(d.data.trackCount)} tracks</div>
-                                <div class="text-xs mt-1 text-gray-400">${Math.round((d.value / root.value) * 100)}% of your total listening</div>
+                                <div class="text-xs mt-1 text-gray-400">${Math.max(1, Math.round(d.percentage))}% of your total listening</div>
                             `);
                             
                         //~ highlight circle
@@ -306,7 +308,7 @@ const GenreBubbleChart = ({ userId }) => {
     return (
         <motion.div 
             ref={containerRef}
-            className="bg-gray-800/40 backdrop-blur-xl p-1 sm:p-3 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-purple-500/5 transition-all duration-300"
+            className="bg-gray-800/40 backdrop-blur-xl p-0 sm:p-2 rounded-xl border border-gray-700/50 shadow-xl hover:shadow-purple-500/5 transition-all duration-300"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -360,8 +362,8 @@ const GenreBubbleChart = ({ userId }) => {
                 </motion.div>
             </div>
             
-            <div className={`relative rounded-lg ${isMobile ? '-mx-4 overflow-visible' : '-mx-4 overflow-visible'}`}>
-                <svg ref={svgRef} width="calc(100% + 32px)" height={isMobile ? "180%" : "650"} className="overflow-visible -ml-4"></svg>
+            <div className="relative rounded-lg -mx-5 overflow-visible">
+                <svg ref={svgRef} width="calc(100% + 40px)" height={isMobile ? "200%" : "700"} className="overflow-visible -ml-5"></svg>
                 <div
                     ref={tooltipRef}
                     className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"
