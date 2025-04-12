@@ -57,7 +57,7 @@ const GenreBubbleChart = ({ userId }) => {
         //~ optimize dimensions fr maximum bubble size
         //~ on mobile: use square fr best packing w slightly taller height
         //~ on desktop: use wide rectangle fr best viewing
-        const width = isMobile ? containerWidth - 10 : containerWidth - 20;
+        const width = isMobile ? containerWidth - 20 : Math.max(1000, containerWidth * 1.1);
         const height = isMobile ? width * 1.6 : 600;
         
         //~ SVG container - expanded to fill all avail space
@@ -65,7 +65,7 @@ const GenreBubbleChart = ({ userId }) => {
             .attr("viewBox", `0 0 ${width} ${height}`)
             .attr("width", "100%")
             .attr("height", height)
-            .attr("preserveAspectRatio", "none")
+            .attr("preserveAspectRatio", isMobile ? "xMidYMin meet" : "xMidYMid meet")
             
         //~ hierarchy data structure fr bubble layout
         const hierarchy = {
@@ -81,9 +81,16 @@ const GenreBubbleChart = ({ userId }) => {
             .size([width, height])
             .padding(isMobile ? 1 : 3);
             
-        //~ process data fr bubble layout
+        //~ process data fr bubble layout w modified sizing algorithm
+        //~ apply sq root scale to boost smaller values while keeping large ones similar
         const root = d3.hierarchy(hierarchy)
-            .sum(d => d.value)
+            .sum(d => {
+                const originalValue = d.value;
+                if (originalValue < data[1]?.minutes * 0.95) {
+                    return Math.pow(originalValue, 0.8) * 2;
+                }
+                return originalValue;
+            })
             .sort((a, b) => b.value - a.value);
             
         bubble(root);
@@ -353,8 +360,8 @@ const GenreBubbleChart = ({ userId }) => {
                 </motion.div>
             </div>
             
-            <div className="relative rounded-lg -mx-3 overflow-visible">
-                <svg ref={svgRef} width="calc(100% + 24px)" height={isMobile ? "160%" : "600"} className="overflow-visible -ml-3"></svg>
+            <div className={`relative rounded-lg ${isMobile ? '-mx-2 overflow-visible' : 'overflow-hidden'}`}>
+                <svg ref={svgRef} width="100%" height={isMobile ? "160%" : "600"} className="overflow-visible"></svg>
                 <div
                     ref={tooltipRef}
                     className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"
