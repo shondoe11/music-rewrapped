@@ -57,15 +57,15 @@ const GenreBubbleChart = ({ userId }) => {
         //~ optimize dimensions fr maximum bubble size
         //~ on mobile: use square fr best packing w slightly taller height
         //~ on desktop: use wide rectangle fr best viewing
-        const width = isMobile ? containerWidth - 20 : Math.max(1000, containerWidth * 1.2);
+        const width = isMobile ? containerWidth - 10 : containerWidth - 20;
         const height = isMobile ? width * 1.6 : 600;
         
-        //~ SVG container
+        //~ SVG container - expanded to fill all avail space
         const svg = d3.select(svgRef.current)
             .attr("viewBox", `0 0 ${width} ${height}`)
             .attr("width", "100%")
             .attr("height", height)
-            .attr("preserveAspectRatio", isMobile ? "xMidYMin meet" : "xMidYMid meet")
+            .attr("preserveAspectRatio", "none")
             
         //~ hierarchy data structure fr bubble layout
         const hierarchy = {
@@ -165,7 +165,7 @@ const GenreBubbleChart = ({ userId }) => {
                     Math.min(255, rgb.b + 40)
                 ).formatHex();
             } catch {
-                //~ silently handle error and use fallback
+                //~ silently handle error & use fallback
                 lighterColor = baseColor;
             }
             
@@ -353,8 +353,8 @@ const GenreBubbleChart = ({ userId }) => {
                 </motion.div>
             </div>
             
-            <div className={`relative rounded-lg ${isMobile ? '-mx-3 overflow-visible' : '-mx-2 sm:mx-0 overflow-hidden'}`}>
-                <svg ref={svgRef} width="100%" height={isMobile ? "160%" : "600"} className="overflow-visible"></svg>
+            <div className="relative rounded-lg -mx-3 overflow-visible">
+                <svg ref={svgRef} width="calc(100% + 24px)" height={isMobile ? "160%" : "600"} className="overflow-visible -ml-3"></svg>
                 <div
                     ref={tooltipRef}
                     className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"
