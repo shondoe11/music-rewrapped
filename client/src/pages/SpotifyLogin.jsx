@@ -15,9 +15,9 @@ const SpotifyLogin = () => {
   const { storeToken } = useAuth();
   const [showCrosshair, setShowCrosshair] = useState(false);
   const containerRef = useRef(null);
-  const lowerSectionRef = useRef(null);
   const buttonRef = useRef(null);
   const learnMoreTextRef = useRef(null);
+  const [crosshairVisible, setCrosshairVisible] = useState(false);
 
   useEffect(() => {
     //& check fr token in URL params (frm OAuth redirect)
@@ -67,6 +67,25 @@ const SpotifyLogin = () => {
       window.removeEventListener('mousemove', handleMouseMove);
     };
   }, [showCrosshair]);
+  
+  useEffect(() => {
+    if (!learnMoreTextRef.current || !containerRef.current) return;
+    
+    const handleMousePosition = (e) => {
+      const learnMoreRect = learnMoreTextRef.current.getBoundingClientRect();
+      if (e.clientY > learnMoreRect.bottom) {
+        setCrosshairVisible(true);
+      } else {
+        setCrosshairVisible(false);
+      }
+    };
+    
+    window.addEventListener('mousemove', handleMousePosition);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMousePosition);
+    };
+  }, [learnMoreTextRef, containerRef]);
 
   
   const handleLogin = () => {
@@ -93,7 +112,7 @@ const SpotifyLogin = () => {
       SPLAT_FORCE={9000}
       TRANSPARENT={true}
       />
-      {showCrosshair && <Crosshair containerRef={lowerSectionRef} color="rgba(0, 255, 255, 0.4)" />}
+      {showCrosshair && crosshairVisible && <Crosshair containerRef={containerRef} color="rgba(0, 255, 255, 0.4)" />}
 
       <div className="absolute top-0 left-0 w-full h-full -z-10 bg-black">
         <Aurora
@@ -132,18 +151,17 @@ const SpotifyLogin = () => {
           </GradientText>
         </div>
         
-        <div ref={lowerSectionRef} className="relative w-full">
-          <Magnet padding={125} disabled={false} magnetStrength={1}>
-            <button
-              ref={buttonRef}
-              onClick={handleLogin}
-              className="px-8 py-4 bg-gray-800 hover:bg-green-500 rounded-full text-xl font-semibold transition-colors duration-300"
-              style={{ fontFamily: "'Circular', sans-serif" }}
-            >
-              Login with Spotify
-            </button>
-          </Magnet>
-        </div>
+        <Magnet padding={125} disabled={false} magnetStrength={1}>
+          <button
+            ref={buttonRef}
+            onClick={handleLogin}
+            className="px-8 py-4 bg-gray-800 hover:bg-green-500 rounded-full text-xl font-semibold transition-colors duration-300"
+            style={{ fontFamily: "'Circular', sans-serif" }}
+          >
+            Login with Spotify
+          </button>
+        </Magnet>
+        
       </div>
     </div>
   );
