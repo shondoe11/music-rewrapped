@@ -3,6 +3,7 @@ import requests
 from datetime import datetime, timezone, timedelta
 import logging
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from server.extensions import db
 from server.model import ListeningHistory, AggregatedStats, Event, User
 from server.redis_client import redis_client, batch_get, set_cached
@@ -114,8 +115,13 @@ def fetch_listening_history(user_id):
         )
         db.session.add(new_history)
     pipeline.execute()
-    db.session.commit()
-    return {'message': 'listening history synced successfully'}
+    try:
+        db.session.commit()
+        return {'message': 'listening history synced successfully'}
+    except IntegrityError as e:
+        db.session.rollback()
+        logging.info(f"Skipping duplicate entry: {str(e)}")
+        return {'message': 'listening history synced (skipped duplicates)'}
 
 @shared_task
 def aggregate_listening_history_task(user_id):
