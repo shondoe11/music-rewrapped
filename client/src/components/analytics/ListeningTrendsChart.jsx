@@ -227,7 +227,7 @@ const ListeningTrendsChart = ({ userId }) => {
             .attr("class", "track-dot")
             .attr("cx", d => x(d.date))
             .attr("cy", d => yTrackCount(d.trackCount))
-            .attr("r", 4)
+            .attr("r", 8)
             .attr("fill", "#4ADE80")
             .on("mouseover", function(event, d) {
                 //~ chart container position fr better tooltip positioning
@@ -251,15 +251,15 @@ const ListeningTrendsChart = ({ userId }) => {
                     .style("transform", "translateY(0)")
                     .html(`
                         <div class="date">${formatTooltipDate(d.date, timeFrame)}</div>
-                        <div class="tracks"><span>Tracks:</span> ${formatNumber(d.trackCount)}</div>
-                        <div class="minutes"><span>Time:</span> ${formatListeningTime(d.minutes)}</div>
+                        <div class="tracks"><span style="color: #4ADE80">Tracks:</span> <span style="color: #4ADE80">${formatNumber(d.trackCount)}</span></div>
+                        <div class="minutes"><span style="color: #3B82F6">Time:</span> <span style="color: #3B82F6">${formatListeningTime(d.minutes)}</span></div>
                     `);
                     
                 //~ highlight dot
                 d3.select(this)
                     .transition()
                     .duration(200)
-                    .attr("r", 7)
+                    .attr("r", 10)
                     .attr("stroke", "white")
                     .attr("stroke-width", 2);
             })
@@ -272,7 +272,7 @@ const ListeningTrendsChart = ({ userId }) => {
                 d3.select(this)
                     .transition()
                     .duration(200)
-                    .attr("r", 4)
+                    .attr("r", 8)
                     .attr("stroke", "none");
             });
             
@@ -284,7 +284,7 @@ const ListeningTrendsChart = ({ userId }) => {
             .attr("class", "minutes-dot")
             .attr("cx", d => x(d.date))
             .attr("cy", d => yMinutes(d.minutes))
-            .attr("r", 4)
+            .attr("r", 8)
             .attr("fill", "#3B82F6")
             .on("mouseover", function(event, d) {
                 //~ chart container position fr better tooltip positioning
@@ -308,15 +308,15 @@ const ListeningTrendsChart = ({ userId }) => {
                     .style("transform", "translateY(0)")
                     .html(`
                         <div class="date">${formatTooltipDate(d.date, timeFrame)}</div>
-                        <div class="tracks"><span>Tracks:</span> ${formatNumber(d.trackCount)}</div>
-                        <div class="minutes"><span>Time:</span> ${formatListeningTime(d.minutes)}</div>
+                        <div class="tracks"><span style="color: #4ADE80">Tracks:</span> <span style="color: #4ADE80">${formatNumber(d.trackCount)}</span></div>
+                        <div class="minutes"><span style="color: #3B82F6">Time:</span> <span style="color: #3B82F6">${formatListeningTime(d.minutes)}</span></div>
                     `);
                     
                 //~ highlight dot
                 d3.select(this)
                     .transition()
                     .duration(200)
-                    .attr("r", 7)
+                    .attr("r", 10)
                     .attr("stroke", "white")
                     .attr("stroke-width", 2);
             })
@@ -329,7 +329,7 @@ const ListeningTrendsChart = ({ userId }) => {
                 d3.select(this)
                     .transition()
                     .duration(200)
-                    .attr("r", 4)
+                    .attr("r", 8)
                     .attr("stroke", "none");
             });
             
@@ -341,7 +341,7 @@ const ListeningTrendsChart = ({ userId }) => {
         legend.append("circle")
             .attr("cx", 0)
             .attr("cy", 0)
-            .attr("r", 6)
+            .attr("r", 8)
             .attr("fill", "#4ADE80");
             
         legend.append("text")
@@ -355,13 +355,13 @@ const ListeningTrendsChart = ({ userId }) => {
         legend.append("circle")
             .attr("cx", 150)
             .attr("cy", 0)
-            .attr("r", 6)
+            .attr("r", 8)
             .attr("fill", "#3B82F6");
             
         legend.append("text")
             .attr("x", 165)
             .attr("y", 4)
-            .text("Minutes Listened")
+            .text("Time Listened")
             .style("font-size", "14px")
             .style("fill", "#ccc");
         
@@ -478,10 +478,10 @@ const ListeningTrendsChart = ({ userId }) => {
                 >
                     <div className="date font-bold text-sm mb-1 text-gray-300"></div>
                     <div className="tracks text-sm">
-                        <span className="text-green-400 font-medium">Tracks:</span> <span></span>
+                        <span className="text-green-400 font-medium">Tracks:</span> <span className="text-green-400"></span>
                     </div>
                     <div className="minutes text-sm">
-                        <span className="text-blue-400 font-medium">Minutes:</span> <span></span>
+                        <span className="text-blue-400 font-medium">Time:</span> <span className="text-blue-400"></span>
                     </div>
                 </div>
             </div>
