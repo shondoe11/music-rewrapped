@@ -326,10 +326,6 @@ const _baseHex = color.startsWith("#") ? color.substring(1) : color;
         
         const chartRect = svgRef.current.getBoundingClientRect();
         const tooltip = d3.select(tooltipRef.current);
-        const sourceX = Math.sin((d.source.startAngle + d.source.endAngle) / 2) * innerRadius;
-        const sourceY = -Math.cos((d.source.startAngle + d.source.endAngle) / 2) * innerRadius;
-        const targetX = Math.sin((d.target.startAngle + d.target.endAngle) / 2) * innerRadius;
-        const targetY = -Math.cos((d.target.startAngle + d.target.endAngle) / 2) * innerRadius;
         
         //& use original color fr tooltip
         const sourceColor = originalColors[d.source.index] || '#ffffff';
