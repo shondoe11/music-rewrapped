@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import RecentlyPlayedTracks from './RecentlyPlayedTracks';
 import TopTracksChart from './TopTracksChart';
 import TopAlbumsChart from './TopAlbumsChart';
@@ -67,11 +67,11 @@ const Dashboard = ({ userId }) => {
   const isInitialAlbumsLoad = useRef(true);
   const isInitialArtistsLoad = useRef(true);
 
-  const timeFrames = [
+  const timeFrames = useMemo(() => [
     { label: 'Last 4 Weeks', value: 'short_term' },
     { label: 'Last 6 Months', value: 'medium_term' },
     { label: 'All Time', value: 'long_term' },
-  ];
+  ], []);
 
   //& handle time frame changes w user interaction flags
   const handleTracksTimeFrameChange = (e) => {
@@ -89,7 +89,7 @@ const Dashboard = ({ userId }) => {
     setArtistsTimeFrame(e.target.value);
   };
 
-  const fetchRecentlyPlayed = async () => {
+  const fetchRecentlyPlayed = useCallback(async () => {
     try {
       const result = await getRecentlyPlayedTracks(userId, 50);
       setRecentlyPlayed(result.tracks);
@@ -106,13 +106,13 @@ const Dashboard = ({ userId }) => {
         toast.error('Error refreshing Your Recently Played Tracks.');
       }
     }
-  };
+  }, [userId, isInitialRecentlyPlayedLoad]);
 
   useEffect(() => {
     if (userId) {
       fetchRecentlyPlayed();
     }
-  }, [userId]);
+  }, [userId, fetchRecentlyPlayed]);
 
   const handleRefreshRecentlyPlayed = () => {
     isInitialRecentlyPlayedLoad.current = false;
@@ -146,7 +146,7 @@ const Dashboard = ({ userId }) => {
     if (userId) {
       fetchTopTracks();
     }
-  }, [userId, tracksTimeFrame]);
+  }, [userId, tracksTimeFrame, timeFrames]);
 
   useEffect(() => {
     async function fetchTopAlbums() {
@@ -173,7 +173,7 @@ const Dashboard = ({ userId }) => {
     if (userId) {
       fetchTopAlbums();
     }
-  }, [userId, albumsTimeFrame]);
+  }, [userId, albumsTimeFrame, timeFrames]);
 
   useEffect(() => {
   async function fetchTopArtists() {
@@ -200,7 +200,7 @@ const Dashboard = ({ userId }) => {
   if (userId) {
     fetchTopArtists();
   }
-}, [userId, artistsTimeFrame]);
+}, [userId, artistsTimeFrame, timeFrames]);
 
   return (
     <div className="container mx-auto p-4">

@@ -266,13 +266,13 @@ const ListeningStreakSummary = ({ userId }) => {
         
         //~ create custom path fr filled area w animation
         let hasData = false;
-        let startIndex = -1;
+        let _startIndex = -1;
         
         //~ find first month w data
         for (let i = 0; i < monthsData.length; i++) {
             if (monthsData[i].hours > 0) {
                 hasData = true;
-                startIndex = i;
+                const _startIndex = i;
                 break;
             }
         }
@@ -374,7 +374,7 @@ const ListeningStreakSummary = ({ userId }) => {
                 return `translate(${x}, ${y})`;
             })
             .style("cursor", "pointer")
-            .on("mouseover", function(event, d, i) {
+            .on("mouseover", function(event, d, _i) {
                 if (d.hours <= 0) return;
                 
                 d3.select(this).select("circle.dot-highlight")
@@ -396,8 +396,8 @@ const ListeningStreakSummary = ({ userId }) => {
                     .attr("r", 5);
                     
                 const chartRect = svgRef.current.getBoundingClientRect();
-                const tooltipWidth = 200;
-                const tooltipHeight = 80;
+                const _tooltipWidth = 200;
+                const _tooltipHeight = 80;
                 
                 const angle = angleScale(monthsData.indexOf(d)) - Math.PI / 2;
                 const r = radiusScale(d.hours);

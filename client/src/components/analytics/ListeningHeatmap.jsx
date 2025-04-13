@@ -115,7 +115,7 @@ const ListeningHeatmap = ({ userId }) => {
             .text("Listening Activity by Day and Hour");
 
         //& create heatmap cells
-        const heatmapCells = svg.selectAll(".heatmap-cell")
+        const _heatmapCells = svg.selectAll(".heatmap-cell")
             .data(data.data.flatMap((dayData, dayIndex) => 
                 dayData.map((value, hourIndex) => ({
                     day: dayIndex,

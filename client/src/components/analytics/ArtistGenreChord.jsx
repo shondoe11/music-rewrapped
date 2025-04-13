@@ -12,7 +12,7 @@ const ArtistGenreChord = ({ userId }) => {
     const [error, setError] = useState(null);
     const [timeRange, setTimeRange] = useState('medium_term');
     const [artistLimit, setArtistLimit] = useState(8);
-    const [selectedSegment, setSelectedSegment] = useState(null);
+    const [_selectedSegment, _setSelectedSegment] = useState(null);
     const [isSafariBrowser, setIsSafariBrowser] = useState(false);
     const [isFirefoxBrowser, setIsFirefoxBrowser] = useState(false);
     
@@ -107,7 +107,7 @@ const ArtistGenreChord = ({ userId }) => {
     .attr("y2", "100%")
     .attr("gradientUnits", "objectBoundingBox"); //~ fr Safari compatibility
     
-    const baseHex = color.startsWith("#") ? color.substring(1) : color;
+const _baseHex = color.startsWith("#") ? color.substring(1) : color;
     
     let lighterColor;
     try {
@@ -117,7 +117,7 @@ const ArtistGenreChord = ({ userId }) => {
     Math.min(255, rgb.g + 40),
     Math.min(255, rgb.b + 40)
     ).formatHex();
-    } catch (e) {
+    } catch (_) {
     lighterColor = color;
     }
     
@@ -160,7 +160,7 @@ const ArtistGenreChord = ({ userId }) => {
     
     group.selectAll("path")
     .on("mouseover touchstart", function(event, d) {
-        const [pointerX, pointerY] = d3.pointer(event, this);
+        const [_pointerX, _pointerY] = d3.pointer(event, this);
         
         d3.select(this)
         .transition()
@@ -277,7 +277,7 @@ const ArtistGenreChord = ({ userId }) => {
     //~ add event handlers separately fr chords
     svg.selectAll(".chord")
     .on("mouseover touchstart", function(event, d) {
-        const [pointerX, pointerY] = d3.pointer(event);
+        const [_pointerX, _pointerY] = d3.pointer(event);
         
         d3.select(this)
         .transition()

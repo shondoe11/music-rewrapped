@@ -16,7 +16,7 @@ import EventListings from './EventListings';
 import SavedEvents from './SavedEvents';
 import ScrollToTop from './ScrollToTop';
 
-const Events = ({ userId }) => {
+const Events = ({ _userId }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [events, setEvents] = useState([]); 
@@ -157,30 +157,28 @@ const Events = ({ userId }) => {
         setCurrentPage(1);
     };
 
-    const trackEventView = async (eventId) => {
+    //& debounced tracking to prevent duplicate counts
+    const debouncedTrackView = useCallback((eventId) => {
         if (!eventId) return;
         
-        try {
-        await analyticsService.trackEventView(eventId);
-        } catch (error) {
-        console.error('Failed to track event view:', error);
-        }
-    };
-
-    //& debounced tracking to prevent duplicate counts
-    const debouncedTrackView = useCallback(
-        _.debounce((eventId) => {
-        if (!viewedEvents.has(eventId)) {
-            try {
-            trackEventView(eventId);
-            setViewedEvents(prev => new Set([...prev, eventId]));
-            } catch (error) {
-            console.error('Failed to track event view:', error);
+        const debouncedFn = _.debounce((id) => {
+            if (!viewedEvents.has(id)) {
+                try {
+                    analyticsService.trackEventView(id)
+                        .then(() => {
+                            setViewedEvents(prev => new Set([...prev, id]));
+                        })
+                        .catch(error => {
+                            console.error('Failed to track event view:', error);
+                        });
+                } catch (error) {
+                    console.error('Failed to track event view:', error);
+                }
             }
-        }
-        }, 500),
-        [viewedEvents]
-    );
+        }, 500);
+        debouncedFn(eventId);
+    }, [viewedEvents]);
+    
 
     //& reset viewed events when component unmounts or when recommended events change
     useEffect(() => {

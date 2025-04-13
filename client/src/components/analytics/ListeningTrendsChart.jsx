@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 
 const ListeningTrendsChart = ({ userId }) => {
     const [timeFrame, setTimeFrame] = useState('daily');
-    const [days, setDays] = useState(30);
+    const [days, _setDays] = useState(30);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

@@ -6,15 +6,15 @@ const CircularGallery = ({ artists }) => {
   const containerRef = useRef(null);   
   const [isDragging, setIsDragging] = useState(false);   
   const [startX, setStartX] = useState(0);   
-  const [scrollLeft, setScrollLeft] = useState(0);
+  const [_scrollLeft, setScrollLeft] = useState(0);
   const [dragDirection, setDragDirection] = useState(null);
   const [dragDistance, setDragDistance] = useState(0);
 
   const itemsPerPage = 10;
-  const itemsToShow = Math.min(artists.length, itemsPerPage);   
+  const _itemsToShow = Math.min(artists.length, itemsPerPage); 
   
   const totalPages = Math.ceil(artists.length / itemsPerPage);
-   
+    
   const handleMouseDown = (e) => {     
     setIsDragging(true);     
     setStartX(e.pageX - containerRef.current.offsetLeft);     

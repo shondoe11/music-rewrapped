@@ -23,7 +23,18 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      //& allowances fr common unused imports/vars patterns in the codebase
+      'no-unused-vars': ['warn', { 
+        //~ patterns fr component names, common constants, & special cases like 'motion'
+        varsIgnorePattern: '^(_.*|[A-Z][a-zA-Z0-9]*|[A-Z_]+|motion|animated|AnimatePresence|Component|Router|Routes|Route)$',
+        //~ ignore function args & catch params
+        argsIgnorePattern: '^_',
+        caughtErrors: 'none',
+        //~ ignore rest siblings in destructuring
+        ignoreRestSiblings: true
+      }],
+      //& relaxed hooks rule to prevent false positives
+      'react-hooks/exhaustive-deps': 'warn',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

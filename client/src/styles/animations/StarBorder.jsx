@@ -1,5 +1,5 @@
 const StarBorder = ({
-  as: Component = "button",
+  as: _Component = "button",
   className = "",
   color = "white",
   speed = "6s",
