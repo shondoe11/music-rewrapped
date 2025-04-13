@@ -9,12 +9,32 @@ const GenreBubbleChart = ({ userId }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [timeRange, setTimeRange] = useState('medium_term');
+    const [timeRange, setTimeRange] = useState('long_term');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     
     const svgRef = useRef();
     const tooltipRef = useRef();
     const containerRef = useRef();
+    
+    //& format listening time w appropriate units
+    const formatListeningTime = (minutes) => {
+        if (minutes < 60) {
+            return `${Math.round(minutes)} minutes listened`;
+        } else if (minutes < 24 * 60) {
+            const hours = Math.floor(minutes / 60);
+            const remainingMinutes = Math.round(minutes % 60);
+            return `${hours} hour${hours !== 1 ? 's' : ''}${remainingMinutes > 0 ? ` ${remainingMinutes} min` : ''} listened`;
+        } else {
+            const days = Math.floor(minutes / (24 * 60));
+            const remainingHours = Math.floor((minutes % (24 * 60)) / 60);
+            return `${days} day${days !== 1 ? 's' : ''}${remainingHours > 0 ? ` ${remainingHours} hr` : ''} listened`;
+        }
+    };
+    
+    //& format numbers w thousand separators
+    const formatNumber = (number) => {
+        return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    };
     
     //& handle window resize
     useEffect(() => {
@@ -234,9 +254,9 @@ const GenreBubbleChart = ({ userId }) => {
                             .style('top', `${yPosition}px`)
                             .html(`
                                 <div class="font-medium text-lg" style="color:${color(d.data.name)}">${d.data.name}</div>
-                                <div class="mt-1 text-gray-200">${Math.round(d.data.value)} minutes listened</div>
-                                <div class="text-gray-300">${Math.round(d.data.trackCount)} tracks</div>
-                                <div class="text-xs mt-1 text-gray-400">${d.percentage < 1 ? d.percentage.toFixed(1) : Math.round(d.percentage)}% of your total listening</div>
+                                <div class="mt-1 text-gray-200">${formatListeningTime(Math.round(d.data.value))}</div>
+                                <div class="text-gray-300">${formatNumber(Math.round(d.data.trackCount))} tracks</div>
+                                <div class="text-xs mt-1" style="color:#EEFF00">${d.percentage < 1 ? d.percentage.toFixed(1) : Math.round(d.percentage)}% of your total listening time</div>
                             `);
                             
                         //~ highlight circle
