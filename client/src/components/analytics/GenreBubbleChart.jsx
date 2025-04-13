@@ -55,17 +55,17 @@ const GenreBubbleChart = ({ userId }) => {
         const containerWidth = containerRef.current ? containerRef.current.clientWidth : 900;
         const isMobile = window.innerWidth < 768;   
         //~ optimize dimensions fr maximum bubble size
-        //~ on mobile: use square fr best packing w slightly taller height
+        //~ on mobile: use vertical layout fr better visibility & prevent overflow
         //~ on desktop: use wide rectangle fr best viewing
-        const width = isMobile ? containerWidth + 10 : Math.max(1000, containerWidth * 1.2);
-        const height = isMobile ? width * 2 : 700;
+        const width = isMobile ? containerWidth - 20 : Math.max(1000, containerWidth * 1.2);
+        const height = isMobile ? width * 1.5 : 700;
         
         //~ SVG container - expanded to fill all avail space
         const svg = d3.select(svgRef.current)
             .attr("viewBox", `0 0 ${width} ${height}`)
             .attr("width", "100%")
             .attr("height", height)
-            .attr("preserveAspectRatio", isMobile ? "xMidYMin meet" : "xMidYMid meet")
+            .attr("preserveAspectRatio", isMobile ? "xMidYMid meet" : "xMidYMid meet")
             
         //~ hierarchy data structure fr bubble layout
         const hierarchy = {
@@ -77,18 +77,26 @@ const GenreBubbleChart = ({ userId }) => {
         };
         
         //~ bubble layout w increased spacing between bubbles
+        //~ for mobile, use different layout approach to better use vertical space
         const bubble = d3.pack()
             .size([width, height])
-            .padding(isMobile ? 4 : 6);
+            .padding(isMobile ? 8 : 6);
         //~ calculate total listening time for percentage calculation
         const totalMinutes = data.reduce((sum, item) => sum + item.minutes, 0);
         const root = d3.hierarchy(hierarchy)
             .sum(d => {
                 const originalValue = d.value;
-                if (originalValue < data[1]?.minutes * 0.95) {
-                    return Math.pow(originalValue, 0.7) * 3;
+                if (isMobile) {
+                    if (originalValue < data[1]?.minutes * 0.95) {
+                        return Math.pow(originalValue, 0.85) * 2.5;
+                    }
+                    return originalValue * 0.9;
+                } else {
+                    if (originalValue < data[1]?.minutes * 0.95) {
+                        return Math.pow(originalValue, 0.7) * 3;
+                    }
+                    return originalValue;
                 }
-                return originalValue;
             })
             .sort((a, b) => b.value - a.value);
             
@@ -266,7 +274,15 @@ const GenreBubbleChart = ({ userId }) => {
             .attr('dy', '.3em')
             .attr('fill', '#fff')
             .attr('opacity', 0)
-            .style('font-size', d => Math.min(d.r / 3, 13) + 'px')
+            .style('font-size', d => {
+                const index = root.children.indexOf(d);
+                if (index === 0) {
+                    return Math.min(d.r / 1.8, 34) + 'px';
+                } else if (index === 1) {
+                    return Math.min(d.r / 2, 30) + 'px';
+                }
+                return Math.min(d.r / 3, 14) + 'px';
+            })
             .style('font-weight', 'bold')
             .style('text-shadow', '0 1px 3px rgba(0,0,0,0.7)')
             .text(d => d.data.name)
@@ -362,8 +378,8 @@ const GenreBubbleChart = ({ userId }) => {
                 </motion.div>
             </div>
             
-            <div className="relative rounded-lg -mx-5 overflow-visible">
-                <svg ref={svgRef} width="calc(100% + 40px)" height={isMobile ? "200%" : "700"} className="overflow-visible -ml-5"></svg>
+            <div className="relative rounded-lg overflow-visible py-2">
+                <svg ref={svgRef} width="100%" height={isMobile ? "auto" : "700"} className="overflow-visible"></svg>
                 <div
                     ref={tooltipRef}
                     className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"
