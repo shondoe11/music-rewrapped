@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import PropTypes from 'prop-types';
 import Loader from '../../styles/Loader';
@@ -11,9 +11,33 @@ const ListeningTrendsChart = ({ userId }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    
     const svgRef = useRef();
     const tooltipRef = useRef();
+    
+    //& helper function format listening time w appropriate units
+    const formatListeningTime = useCallback((minutes) => {
+        let sanitizedMinutes = minutes;
+        if (timeFrame === 'daily' && sanitizedMinutes > 24 * 60) {
+            sanitizedMinutes = 24 * 60;
+        } else if (timeFrame === 'weekly' && sanitizedMinutes > 7 * 24 * 60) {
+            sanitizedMinutes = 7 * 24 * 60;
+        }
+        
+        if (sanitizedMinutes < 1) {
+            const seconds = Math.round(sanitizedMinutes * 60);
+            return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+        } else if (sanitizedMinutes < 60) {
+            return `${Math.round(sanitizedMinutes)} minute${Math.round(sanitizedMinutes) !== 1 ? 's' : ''}`;
+        } else if (sanitizedMinutes < 1440) { //~ less than 24h
+            const hours = Math.floor(sanitizedMinutes / 60);
+            const remainingMinutes = Math.round(sanitizedMinutes % 60);
+            return `${hours} hour${hours !== 1 ? 's' : ''}${remainingMinutes > 0 ? ` ${remainingMinutes} min` : ''}`;
+        } else {
+            const days = Math.floor(sanitizedMinutes / 1440);
+            const remainingHours = Math.floor((sanitizedMinutes % 1440) / 60);
+            return `${days} day${days !== 1 ? 's' : ''}${remainingHours > 0 ? ` ${remainingHours} hr` : ''}`;
+        }
+    }, [timeFrame]);
     
     //& fetch data when time frame / days change
     useEffect(() => {
@@ -227,8 +251,8 @@ const ListeningTrendsChart = ({ userId }) => {
                     .style("transform", "translateY(0)")
                     .html(`
                         <div class="date">${formatTooltipDate(d.date, timeFrame)}</div>
-                        <div class="tracks"><span>Tracks:</span> ${d.trackCount}</div>
-                        <div class="minutes"><span>Minutes:</span> ${d.minutes}</div>
+                        <div class="tracks"><span>Tracks:</span> ${formatNumber(d.trackCount)}</div>
+                        <div class="minutes"><span>Time:</span> ${formatListeningTime(d.minutes)}</div>
                     `);
                     
                 //~ highlight dot
@@ -284,8 +308,8 @@ const ListeningTrendsChart = ({ userId }) => {
                     .style("transform", "translateY(0)")
                     .html(`
                         <div class="date">${formatTooltipDate(d.date, timeFrame)}</div>
-                        <div class="tracks"><span>Tracks:</span> ${d.trackCount}</div>
-                        <div class="minutes"><span>Minutes:</span> ${d.minutes}</div>
+                        <div class="tracks"><span>Tracks:</span> ${formatNumber(d.trackCount)}</div>
+                        <div class="minutes"><span>Time:</span> ${formatListeningTime(d.minutes)}</div>
                     `);
                     
                 //~ highlight dot
@@ -341,7 +365,7 @@ const ListeningTrendsChart = ({ userId }) => {
             .style("font-size", "14px")
             .style("fill", "#ccc");
         
-    }, [data, loading, timeFrame]);
+    }, [data, loading, timeFrame, formatListeningTime]);
     
     //& helper function format tooltip dates based on timeframe
     const formatTooltipDate = (date, timeFrame) => {
@@ -355,6 +379,11 @@ const ListeningTrendsChart = ({ userId }) => {
         } else {
             return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
         }
+    };
+    
+    //& helper function format numbers w thousands separators
+    const formatNumber = (number) => {
+        return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     };
     
     if (loading) {

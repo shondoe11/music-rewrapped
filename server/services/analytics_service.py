@@ -49,6 +49,27 @@ def get_listening_trends(user_id, time_frame='daily', days=30):
         ).order_by('day')
         
         results = query.all()
+        
+        for row in results:
+            print(f"DEBUG: Date={row.day}, Tracks={row.track_count}, Total seconds={row.total_seconds}, Hours={row.total_seconds/3600:.2f}")
+            
+            #& Special check fr suspicious days w extremely high listening times
+            if row.total_seconds > 24 * 3600:  #~ more than 24h
+                print(f"ANOMALY DETECTED: Investigating {row.day} with {row.total_seconds/3600:.2f} hours of listening time")
+                
+                #~ Check fr duplicated played_at timestamps (same exact time)
+                raw_records = db.session.query(
+                    ListeningHistory.played_at,
+                    func.count(ListeningHistory.id).label('count')
+                ).filter(
+                    ListeningHistory.user_id == user_id,
+                    func.date(ListeningHistory.played_at) == row.day
+                ).group_by(ListeningHistory.played_at
+                ).having(func.count(ListeningHistory.id) > 1).all()
+                
+                if raw_records:
+                    print(f"Found {len(raw_records)} timestamps with duplicate entries on {row.day}")
+            
         data_points = []
         
         #& generate continuous date range & fill missing dates
@@ -63,11 +84,15 @@ def get_listening_trends(user_id, time_frame='daily', days=30):
             else:
                 track_count, total_seconds = 0, 0
                 
+            #~ convert frm secs to mins directly (s/60)
+            minutes_value = round(total_seconds / 60, 1)
+            
             data_points.append({
                 'date': date_str,
                 'trackCount': track_count,
-                'minutes': round(total_seconds / 60, 1)
+                'minutes': minutes_value
             })
+            
             current_date += timedelta(days=1)
             
         return data_points

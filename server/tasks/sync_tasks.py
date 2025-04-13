@@ -1,6 +1,7 @@
 from celery import shared_task
 import requests
 from datetime import datetime, timezone, timedelta
+import logging
 from sqlalchemy import func
 from server.extensions import db
 from server.model import ListeningHistory, AggregatedStats, Event, User
@@ -66,6 +67,19 @@ def fetch_listening_history(user_id):
             played_at = datetime.fromisoformat(item.get('played_at').replace('Z', '+00:00'))
         except Exception:
             played_at = datetime.now(timezone.utc)
+        
+        track_id = track.get('id')
+        
+        #& check if exact played_at timestamp alrdy exists fr this track
+        existing_entry = ListeningHistory.query.filter_by(
+            user_id=user.id,
+            track_id=track_id,
+            played_at=played_at
+        ).first()
+        
+        #~ skip this entry if alrdy exists w same played_at time
+        if existing_entry:
+            continue
 
         genres = None
         if track.get('artists'):
@@ -87,9 +101,10 @@ def fetch_listening_history(user_id):
                         artist_genre_cache[artist_id] = genres
                         #~ using set_cached to update both local & redis caches
                         set_cached(f'artist_genre:{artist_id}', genres, ex=timedelta(days=1))
+        
         new_history = ListeningHistory(
             user_id=user.id,
-            track_id=track.get('id'),
+            track_id=track_id,
             track_name=track.get('name'),
             artist=', '.join([artist.get('name') for artist in track.get('artists', [])]),
             artwork_url=track.get('album', {}).get('images', [{}])[0].get('url'),
