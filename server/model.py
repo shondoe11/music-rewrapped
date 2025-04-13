@@ -64,6 +64,11 @@ class ListeningHistory(db.Model):
     played_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     #todo add more fields for artist, duration, etc later
     
+    #& db-level unique constraint to prevent duplicate entries
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'track_id', 'played_at', name='uix_user_track_played_at'),
+    )
+    
     def __repr__(self):
         return f'<ListeningHistory user:{self.user_id} track:{self.track_id}>'
 
