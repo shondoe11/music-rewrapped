@@ -10,11 +10,12 @@ const ArtistGenreChord = ({ userId }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [timeRange, setTimeRange] = useState('medium_term');
-    const [artistLimit, setArtistLimit] = useState(8);
+    const [timeRange, setTimeRange] = useState('long_term');
+    const [artistLimit, setArtistLimit] = useState(15);
     const [_selectedSegment, _setSelectedSegment] = useState(null);
     const [isSafariBrowser, setIsSafariBrowser] = useState(false);
     const [isFirefoxBrowser, setIsFirefoxBrowser] = useState(false);
+    const [originalColors, setOriginalColors] = useState([]);
     
     const svgRef = useRef();
     const tooltipRef = useRef();
@@ -95,6 +96,11 @@ const ArtistGenreChord = ({ userId }) => {
     .attr("r", innerRadius * 1.25)
     .attr("fill", "url(#background-gradient)")
     .attr("opacity", 0.5);
+    
+    //& store original colors fr tooltip use
+    if (originalColors.length === 0) {
+        setOriginalColors([...colors]);
+    }
     
     colors.forEach((color, i) => {
     const gradientId = `chord-gradient-${i}`;
@@ -196,23 +202,45 @@ const _baseHex = color.startsWith("#") ? color.substring(1) : color;
             };
         }).sort((a, b) => b.value - a.value);
         
+        //& calculating angle & position (fr highlighting)
         const angle = (d.startAngle + d.endAngle) / 2;
-        const x = Math.sin(angle) * (outerRadius + 30);
-        const y = -Math.cos(angle) * (outerRadius + 30);
+        const _x = Math.sin(angle) * (outerRadius + 30);
+        const _y = -Math.cos(angle) * (outerRadius + 30);
         
         const chartRect = svgRef.current.getBoundingClientRect();
         const tooltip = d3.select(tooltipRef.current);
+        
+        //& use original color for tooltip
+        const segmentColor = originalColors[d.index] || '#ffffff';
+        
+        //& responsive positioning calculation
+        const isMobile = window.innerWidth < 768;
+        const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+        
+        let leftPosition, topPosition;
+        
+        //& position tooltip based on screen size
+        if (isMobile || isTablet) {
+            //~ fixed position guaranteed to be visible inside component
+            leftPosition = chartRect.left + chartRect.width / 2;
+            topPosition = chartRect.top + 80;
+        } else {
+            //~ desktop position
+            leftPosition = chartRect.left + width/2;
+            topPosition = chartRect.top + 40;
+        }
+        
         tooltip.style("display", "block")
-        .style("left", `${chartRect.left + width/2 + x}px`)
-        .style("top", `${chartRect.top + height/2 + y}px`)
+        .style("left", `${leftPosition}px`)
+        .style("top", `${topPosition}px`)
         .html(`
-            <div class="text-lg font-medium" style="color:${d3.rgb(colors[d.index]).toString().replace('url(#chord-gradient-', '#').replace(')', '')}">${names[d.index]}</div>
+            <div class="text-lg font-medium" style="color:${segmentColor}">${names[d.index]}</div>
             <div class="text-sm text-gray-300 mt-1">Connections:</div>
             <div class="max-h-40 overflow-y-auto pr-2">
-                ${connections.map(conn => `
+                ${connections.map((conn, _i) => `
                 <div class="flex justify-between items-center mt-1 text-sm">
-                <span class="text-gray-300">${conn.name}</span>
-                <span class="text-gray-400 ml-4">${conn.value}</span>
+                <span style="color:${segmentColor}">${conn.name}</span>
+                <span style="color:${segmentColor}" class="ml-4">${conn.value}</span>
                 </div>
                 `).join('')}
             </div>
@@ -303,11 +331,31 @@ const _baseHex = color.startsWith("#") ? color.substring(1) : color;
         const targetX = Math.sin((d.target.startAngle + d.target.endAngle) / 2) * innerRadius;
         const targetY = -Math.cos((d.target.startAngle + d.target.endAngle) / 2) * innerRadius;
         
+        //& use original color fr tooltip
+        const sourceColor = originalColors[d.source.index] || '#ffffff';
+        
+        //& responsive positioning calculation
+        const isMobile = window.innerWidth < 768;
+        const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+        
+        let leftPosition, topPosition;
+        
+        //& position tooltip based on screen size
+        if (isMobile || isTablet) {
+            //~ fixed position guaranteed to be visible inside component
+            leftPosition = chartRect.left + chartRect.width / 2;
+            topPosition = chartRect.top + 80;
+        } else {
+            //~ desktop position
+            leftPosition = chartRect.left + width/2;
+            topPosition = chartRect.top + 40;
+        }
+        
         tooltip.style("display", "block")
-        .style("left", `${chartRect.left + width/2 + (sourceX + targetX)/2}px`)
-        .style("top", `${chartRect.top + height/2 + (sourceY + targetY)/2}px`)
+        .style("left", `${leftPosition}px`)
+        .style("top", `${topPosition}px`)
         .html(`
-            <div class="font-medium">${names[d.source.index]} → ${names[d.target.index]}</div>
+            <div class="font-medium"><span style="color:${sourceColor}">${names[d.source.index]}</span> → <span style="color:${sourceColor}">${names[d.target.index]}</span></div>
             <div class="text-sm text-gray-300 mt-1">Connection strength: ${Math.round(d.source.value)}</div>
         `);
     })
@@ -329,7 +377,7 @@ const _baseHex = color.startsWith("#") ? color.substring(1) : color;
         d3.select(tooltipRef.current)
         .style("display", "none");
     });
-    }, [data, loading]);
+    }, [data, loading, originalColors]);
     
     if (loading) {
     return (
@@ -442,8 +490,8 @@ const _baseHex = color.startsWith("#") ? color.substring(1) : color;
     <svg ref={svgRef} width="100%" height="700" preserveAspectRatio="xMidYMid meet" className="overflow-visible"></svg>
     <div
     ref={tooltipRef}
-    className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50 max-w-xs transform -translate-x-1/2 -translate-y-1/2"
-    style={{ display: 'none' }}
+    className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50 max-w-xs w-64"
+    style={{ display: 'none', transform: 'translate(-50%, 0)' }}
     ></div>
     </div>
     </div>
