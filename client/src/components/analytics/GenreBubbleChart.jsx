@@ -53,19 +53,17 @@ const GenreBubbleChart = ({ userId }) => {
 
         //~ use container dimensions for more responsive sizing
         const containerWidth = containerRef.current ? containerRef.current.clientWidth : 900;
-        const isMobile = window.innerWidth < 768;   
-        //~ optimize dimensions fr maximum bubble size
-        //~ on mobile: use vertical layout fr better visibility & prevent overflow
-        //~ on desktop: use wide rectangle fr best viewing
-        const width = isMobile ? containerWidth - 20 : Math.max(1000, containerWidth * 1.2);
-        const height = isMobile ? width * 1.5 : 700;
+        const isMobile = window.innerWidth < 768;
+
+        const width = isMobile ? containerWidth : Math.max(containerWidth, containerWidth * 1.1);
+        const height = isMobile ? 480 : 750;
         
-        //~ SVG container - expanded to fill all avail space
+        //~ SVG container
         const svg = d3.select(svgRef.current)
             .attr("viewBox", `0 0 ${width} ${height}`)
             .attr("width", "100%")
             .attr("height", height)
-            .attr("preserveAspectRatio", isMobile ? "xMidYMid meet" : "xMidYMid meet")
+            .attr("preserveAspectRatio", "xMidYMid meet")
             
         //~ hierarchy data structure fr bubble layout
         const hierarchy = {
@@ -76,11 +74,9 @@ const GenreBubbleChart = ({ userId }) => {
             }))
         };
         
-        //~ bubble layout w increased spacing between bubbles
-        //~ for mobile, use different layout approach to better use vertical space
         const bubble = d3.pack()
             .size([width, height])
-            .padding(isMobile ? 8 : 6);
+            .padding(isMobile ? 2 : 1);
         //~ calculate total listening time for percentage calculation
         const totalMinutes = data.reduce((sum, item) => sum + item.minutes, 0);
         const root = d3.hierarchy(hierarchy)
@@ -88,14 +84,14 @@ const GenreBubbleChart = ({ userId }) => {
                 const originalValue = d.value;
                 if (isMobile) {
                     if (originalValue < data[1]?.minutes * 0.95) {
-                        return Math.pow(originalValue, 0.85) * 2.5;
+                        return Math.pow(originalValue, 0.92) * 3.0;
                     }
-                    return originalValue * 0.9;
+                    return originalValue * 1.25;
                 } else {
                     if (originalValue < data[1]?.minutes * 0.95) {
-                        return Math.pow(originalValue, 0.7) * 3;
+                        return Math.pow(originalValue, 0.85) * 3.2;
                     }
-                    return originalValue;
+                    return originalValue * 1.3;
                 }
             })
             .sort((a, b) => b.value - a.value);
@@ -135,8 +131,8 @@ const GenreBubbleChart = ({ userId }) => {
             .attr("width", width)
             .attr("height", height)
             .attr("fill", "url(#bubble-background)")
-            .attr("rx", isMobile ? 8 : 15)
-            .attr("ry", isMobile ? 8 : 15)
+            .attr("rx", isMobile ? 6 : 12)
+            .attr("ry", isMobile ? 6 : 12)
             .attr("opacity", 0.05);
             
         //~ define gradients
@@ -277,9 +273,9 @@ const GenreBubbleChart = ({ userId }) => {
             .style('font-size', d => {
                 const index = root.children.indexOf(d);
                 if (index === 0) {
-                    return Math.min(d.r / 1.8, 34) + 'px';
+                    return Math.min(d.r / 1.8, 30) + 'px';
                 } else if (index === 1) {
-                    return Math.min(d.r / 2, 30) + 'px';
+                    return Math.min(d.r / 2, 26) + 'px';
                 }
                 return Math.min(d.r / 3, 14) + 'px';
             })
@@ -378,8 +374,8 @@ const GenreBubbleChart = ({ userId }) => {
                 </motion.div>
             </div>
             
-            <div className="relative rounded-lg overflow-visible py-2">
-                <svg ref={svgRef} width="100%" height={isMobile ? "auto" : "700"} className="overflow-visible"></svg>
+            <div className="relative rounded-lg overflow-hidden">
+                <svg ref={svgRef} width="100%" height={isMobile ? "480" : "750"} className="overflow-visible"></svg>
                 <div
                     ref={tooltipRef}
                     className="absolute bg-gray-900/90 backdrop-blur-md text-white p-3 rounded-lg shadow-lg border border-gray-700/50 pointer-events-none hidden z-50"
