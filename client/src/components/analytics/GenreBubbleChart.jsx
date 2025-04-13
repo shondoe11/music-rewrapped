@@ -232,7 +232,7 @@ const GenreBubbleChart = ({ userId }) => {
                                 <div class="font-medium text-lg" style="color:${color(d.data.name)}">${d.data.name}</div>
                                 <div class="mt-1 text-gray-200">${Math.round(d.data.value)} minutes listened</div>
                                 <div class="text-gray-300">${Math.round(d.data.trackCount)} tracks</div>
-                                <div class="text-xs mt-1 text-gray-400">${Math.max(1, Math.round(d.percentage))}% of your total listening</div>
+                                <div class="text-xs mt-1 text-gray-400">${d.percentage < 1 ? d.percentage.toFixed(1) : Math.round(d.percentage)}% of your total listening</div>
                             `);
                             
                         //~ highlight circle
