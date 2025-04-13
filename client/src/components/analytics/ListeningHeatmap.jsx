@@ -9,7 +9,7 @@ const ListeningHeatmap = ({ userId }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [days, setDays] = useState(90);
+    const [days, setDays] = useState(30);
     
     const svgRef = useRef();
     const tooltipRef = useRef();
@@ -160,8 +160,8 @@ const ListeningHeatmap = ({ userId }) => {
                             .style("top", `${yPosition}px`)
                             .html(`
                                 <div class="font-medium text-gray-200">${days[d.day]}, ${hours[d.hour]}</div>
-                                <div class="text-sm mt-1">${d.value} track${d.value === 1 ? '' : 's'} played</div>
-                                ${d.value > 0 ? `<div class="text-xs mt-1 text-gray-400">${Math.round(d.value / data.maxValue * 100)}% of peak</div>` : ''}
+                                <div class="text-sm mt-1" style="color: ${colorScale(d.value)}">${d.value} track${d.value === 1 ? '' : 's'} played</div>
+                                ${d.value > 0 ? `<div class="text-xs mt-1" style="color: #EEFF00">${Math.round(d.value / data.maxValue * 100)}% of peak</div>` : ''}
                             `);
                         
                         //~ highlight cell with transition
