@@ -2,7 +2,8 @@ import axios from 'axios';
 
 import { getTokenFromStorage } from './context/AuthUtils';
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;
+//& in development mode, prioritize local server
+const BASE_URL = import.meta.env.DEV ? 'http://localhost:5001' : import.meta.env.VITE_BASE_URL;
 
 //& cross-browser token retrieval function - now uses shared util
 const getToken = getTokenFromStorage;

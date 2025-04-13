@@ -89,7 +89,8 @@ const SpotifyLogin = () => {
 
   
   const handleLogin = () => {
-    const baseUrl = import.meta.env.VITE_BASE_URL || 'https://music-rewrapped.onrender.com';
+    //& in dev mode, prioritize local server
+    const baseUrl = import.meta.env.DEV ? 'http://localhost:5001' : (import.meta.env.VITE_BASE_URL || 'https://music-rewrapped.onrender.com');
     
     //& store current origin to help w cross-browser redirects
     sessionStorage.setItem('auth_origin', window.location.origin);
