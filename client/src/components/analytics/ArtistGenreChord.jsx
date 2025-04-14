@@ -97,12 +97,15 @@ const ArtistGenreChord = ({ userId }) => {
     .attr("fill", "url(#background-gradient)")
     .attr("opacity", 0.5);
     
-    //& store original colors fr tooltip use
+    //& store original colors fr tooltip use & ensure avail immediately
     if (originalColors.length === 0) {
         setOriginalColors([...colors]);
     }
     
-    colors.forEach((color, i) => {
+    //~ ensure always using either stored original colors / current colors
+    const effectiveColors = originalColors.length > 0 ? [...originalColors] : [...colors];
+    
+    effectiveColors.forEach((color, i) => {
     const gradientId = `chord-gradient-${i}`;
     
     const segmentGradient = defs.append("linearGradient")
@@ -155,7 +158,7 @@ const _baseHex = color.startsWith("#") ? color.substring(1) : color;
     //~ add grp arcs w animation & enhanced styling
     group.append("path")
     .attr("d", d3.arc().innerRadius(innerRadius).outerRadius(outerRadius))
-    .attr("fill", d => colors[d.index])
+    .attr("fill", d => colors[d.index] || effectiveColors[d.index])
     .attr("stroke", "#1f2937")
     .attr("stroke-width", 1.5)
     .attr("opacity", 0)
@@ -292,7 +295,7 @@ const _baseHex = color.startsWith("#") ? color.substring(1) : color;
     .join("path")
     .attr("class", "chord")
     .attr("d", d3.ribbon().radius(innerRadius))
-    .attr("fill", d => colors[d.source.index])
+    .attr("fill", d => colors[d.source.index] || effectiveColors[d.source.index])
     .attr("fill-opacity", 0.75)
     .attr("stroke", "#1f2937")
     .attr("stroke-width", 0.75)
