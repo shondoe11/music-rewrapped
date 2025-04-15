@@ -134,7 +134,7 @@ def set_cached(key, value, ex=None):
     if ex:
         #~ convert timedelta to seconds if need
         if isinstance(ex, timedelta):
-            seconds = ex.total_seconds()
+            seconds = int(ex.total_seconds())  #~ convert to int, prevent Redis type errs
         else:
             seconds = ex
             
