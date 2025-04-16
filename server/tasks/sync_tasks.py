@@ -25,19 +25,40 @@ def fetch_listening_history(user_id):
             user_expires_at = user.expires_at
         current_time = datetime.now(timezone.utc)
         if current_time > user_expires_at:
-            #~ refresh token via helper task
+            #~ token expired, attempt auto-refresh
+            logging.info(f"user {user.id} token expired, attempting auto-refresh")
             refresh_result = refresh_user_token(user_id)
             if 'error' in refresh_result:
+                logging.warning(f"user {user.id} token refresh failed: {refresh_result}")
                 return {'error': 'token refresh failed', 'details': refresh_result}
             db.session.refresh(user)
+            access_token = user.oauth_token
+            headers = {'Authorization': f'Bearer {access_token}'}
+            spotify_url = 'https://api.spotify.com/v1/me/player/recently-played'
+            response = requests.get(spotify_url, headers=headers)
+            if response.status_code != 200:
+                logging.warning(f"user {user.id} failed to fetch listening history after refresh: {response.json()}")
+                return {'error': 'failed to fetch listening history after refresh', 'details': response.json()}
+            logging.info(f"user {user.id} successfully refreshed token and fetched listening history")
+        else:
+            access_token = user.oauth_token
+            headers = {'Authorization': f'Bearer {access_token}'}
+            spotify_url = 'https://api.spotify.com/v1/me/player/recently-played'
+            response = requests.get(spotify_url, headers=headers)
+            if response.status_code != 200:
+                logging.warning(f"user {user.id} failed to fetch listening history: {response.json()}")
+                return {'error': 'failed to fetch listening history', 'details': response.json()}
+    else:
+        #~ no expires_at set, proceed as usual
+        access_token = user.oauth_token
+        headers = {'Authorization': f'Bearer {access_token}'}
+        spotify_url = 'https://api.spotify.com/v1/me/player/recently-played'
+        response = requests.get(spotify_url, headers=headers)
+        if response.status_code != 200:
+            logging.warning(f"user {user.id} failed to fetch listening history: {response.json()}")
+            return {'error': 'failed to fetch listening history', 'details': response.json()}
 
-    access_token = user.oauth_token
-    headers = {'Authorization': f'Bearer {access_token}'}
-
-    spotify_url = 'https://api.spotify.com/v1/me/player/recently-played'
-    response = requests.get(spotify_url, headers=headers)
-    if response.status_code != 200:
-        return {'error': 'failed to fetch listening history', 'details': response.json()}
+    #~ note: max expires_at duration fr spotify access tokens typically 1h (3600s). refresh tokens dont expire unless revoked by user
 
     history_data = response.json().get('items', [])
 
