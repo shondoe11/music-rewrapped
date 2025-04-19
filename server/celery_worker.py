@@ -2,6 +2,7 @@ import os
 from celery import Celery
 from celery.schedules import crontab
 from dotenv import load_dotenv
+import os
 
 #& determine env based on 'FLASK_DEBUG'
 debug = os.environ.get('FLASK_DEBUG', '0') == '1'
