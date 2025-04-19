@@ -107,10 +107,10 @@ const SpotifyLogin = () => {
       ref={containerRef}
     >
       <SplashCursor 
-      DENSITY_DISSIPATION={5}
+      DENSITY_DISSIPATION={10}
       COLOR_UPDATE_SPEED={15}
       SPLAT_RADIUS={0.1}
-      SPLAT_FORCE={9000}
+      SPLAT_FORCE={4000}
       TRANSPARENT={true}
       />
       {showCrosshair && crosshairVisible && <Crosshair containerRef={containerRef} color="rgba(0, 255, 255, 0.4)" />}
