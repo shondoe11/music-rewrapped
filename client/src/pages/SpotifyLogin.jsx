@@ -9,6 +9,7 @@ import GradientText from "../styles/text-animations/GradientText";
 import SplashCursor from "../styles/animations/SplashCursor";
 import { useAuth } from "../hooks/useAuth";
 import Crosshair from "../styles/animations/Crosshair";
+import spotifyLogoWhite from "../assets/spotify-logo-white.svg";
 
 const SpotifyLogin = () => {
   const navigate = useNavigate();
@@ -156,13 +157,26 @@ const SpotifyLogin = () => {
           <button
             ref={buttonRef}
             onClick={handleLogin}
-            className="px-8 py-4 bg-gray-800 hover:bg-green-500 rounded-full text-xl font-semibold transition-colors duration-300"
+            className="px-8 py-4 bg-gray-800 hover:bg-green-500 rounded-full text-xl font-semibold transition-colors duration-300 flex items-center justify-center gap-3"
             style={{ fontFamily: "'Circular', sans-serif" }}
           >
-            Login with Spotify
+            <span>Connect with</span>
+            <img src={spotifyLogoWhite} alt="Spotify" className="h-6" />
           </button>
         </Magnet>
         
+      </div>
+      
+      {/* Footer w privacy notice */}
+      <div className="absolute bottom-0 left-0 right-0 text-center p-4">
+        <div className="max-w-md mx-auto p-3 bg-black/70 backdrop-blur-sm rounded-lg border border-gray-800">
+          <p className="text-sm text-gray-400 mb-2">
+            By connecting with Spotify, you agree to our <a href="/terms" className="text-green-500 hover:text-green-400 underline">Terms of Service</a> and <a href="/privacy" className="text-green-500 hover:text-green-400 underline">Privacy Policy</a>.
+          </p>
+          <p className="text-xs text-gray-500">
+            We'll access your Spotify listening data to provide personalized insights and visualizations. This data is handled according to our privacy policy and Spotify's developer guidelines.
+          </p>
+        </div>
       </div>
     </div>
   );
