@@ -11,6 +11,8 @@ import EventsPage from './pages/EventsPage';
 import PromoterPanel from './pages/PromoterPanel';
 import ReWrapped from './pages/ReWrapped';
 import About from './pages/About';
+import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import { useAuth } from './hooks/useAuth';
 import { UserProvider } from './context/UserContext';
 
@@ -58,6 +60,8 @@ function App() {
           <Route path="/rewrapped" element={<ReWrapped />} />
           <Route path='/events' element={<EventsPage />} />
           <Route path="/promoter-panel" element={<PromoterPanel />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
         </Routes>
       </Router>
     </UserProvider>
