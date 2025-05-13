@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import SpotifyAttribution from '../components/utils/SpotifyAttribution';
 
-//& privacy policy pg
 const PrivacyPolicy = () => {
   return (
     <div className="min-h-screen relative bg-gray-900 text-white">
@@ -101,7 +100,7 @@ const PrivacyPolicy = () => {
           
           <h3 className="text-xl font-semibold mb-3 text-green-400">9. Contact Us</h3>
           <p className="mb-4">
-            If you have questions about this Privacy Policy, please contact us at privacy@music-rewrapped.com.
+            If you have questions about this Privacy Policy, please contact us at musicrewrapped@gmail.com.
           </p>
           
           <div className="mt-8 pt-6 border-t border-gray-700">

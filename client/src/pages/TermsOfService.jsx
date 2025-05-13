@@ -73,7 +73,7 @@ const TermsOfService = () => {
           
           <h3 className="text-xl font-semibold mb-3 text-green-400">8. Contact Information</h3>
           <p className="mb-4">
-            If you have any questions about these Terms, please contact us at support@music-rewrapped.com.
+            If you have any questions about these Terms, please contact us at musicrewrapped@gmail.com.
           </p>
           
           <div className="mt-8 pt-6 border-t border-gray-700">
