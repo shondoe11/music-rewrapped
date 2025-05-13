@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { useAuth } from '../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getCurrentUser, getUserPreferences, updateUserPreferences, changePassword, deleteAccount } from '../api';
 import Threads from '../styles/backgrounds/Threads';
 import CircularText from '../styles/text-animations/CircularText';
@@ -331,6 +331,28 @@ const Profile = () => {
               {/* Delete Account */}
               {user && user.role !== 'guest' && (
                 <div className="mt-8 pt-4 border-t border-gray-700">
+                  <div className="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-700/50">
+                    <h3 className="text-lg font-semibold text-green-400 mb-2">Legal & Privacy</h3>
+                    <p className="text-sm text-gray-300 mb-3">
+                      By using Music Re-Wrapped, you agree to our Terms of Service and Privacy Policy. 
+                      We take your privacy seriously and only use your data as described in these documents.
+                    </p>
+                    <div className="flex space-x-4">
+                      <Link to="/terms" className="text-sm text-green-500 hover:text-green-400 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Terms of Service
+                      </Link>
+                      <Link to="/privacy" className="text-sm text-green-500 hover:text-green-400 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        Privacy Policy
+                      </Link>
+                    </div>
+                  </div>
+                  
                   <h3 className="text-xl font-semibold text-red-500 mb-3">Danger Zone</h3>
                   <p className="text-sm text-gray-400 mb-4">
                     Deleting your account will remove all your listening history data and reset your account to guest status.
