@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { register as registerUser } from '../api';
+import { register as registerUser, getCurrentUser } from '../api';
 import Ballpit from '../styles/backgrounds/Ballpit';
 
 const Register = () => {
@@ -13,10 +14,38 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  //& consent checkbox state
-  const [consentChecked, setConsentChecked] = useState(false);
+  //& terms agreement checkbox state
+  const [termsChecked, setTermsChecked] = useState(false);
+  
+  //& ensure user has completed OAuth process before allowing registration
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const response = await getCurrentUser();
+        if (!(response && response.user && response.user.spotify_id)) {
+          //~ no Spotify ID, redirect to login
+          toast.error('You must connect with Spotify before registering');
+          navigate('/spotify-login');
+        }
+      } catch (error) {
+        //~ error typically means no auth, redirect to login
+        console.error('Auth check failed:', error);
+        toast.error('Please login with Spotify first');
+        navigate('/spotify-login');
+      }
+    };
+
+    checkAuthStatus();
+  }, [navigate]);
+  
   
   const onSubmit = async (data) => {
+    //& check if user agreed to TOS & privacy policy
+    if (!termsChecked) {
+      toast.error('You must agree to the Terms of Service and Privacy Policy');
+      return;
+    }
+    
     try {
       const response = await registerUser(data);
       if (response.message) {
@@ -41,6 +70,8 @@ const Register = () => {
               toast.error(error.response.data.error);
             } else if (error.response.data.error.includes('Consent')) {
               toast.error('You must consent to store listening history to continue.');
+            } else if (error.response.data.error.includes('Terms')) {
+              toast.error('You must agree to our Terms of Service and Privacy Policy to continue.');
             } else if (error.response.data.error.includes('already have an account')) {
               toast.error('You already have a Re-Wrapped account linked to this Spotify ID.');
             } else {
@@ -220,14 +251,28 @@ const Register = () => {
                 type="checkbox"
                 {...register("store_listening_history", { required: "Consent is required" })}
                 className="mt-1 rounded border-gray-700 bg-gray-800 text-green-500 focus:ring-green-500 focus:ring-offset-0 transition-colors cursor-pointer"
-                onChange={(e) => setConsentChecked(e.target.checked)}
               />
-              <span className={`text-sm ${consentChecked ? 'text-green-500' : 'text-red-400'} transition-colors duration-300 group-hover:text-white`}>
-                I permit Re-Wrapped to store my listening history and other Spotify related information.
+              <span className="text-gray-400 text-sm group-hover:text-green-500/80 transition-colors">
+                I consent to the storage and analysis of my Spotify listening history to generate insights and recommendations
               </span>
             </label>
-            {errors.store_listening_history && (
-              <p className="text-red-400 text-sm mt-2 font-medium">{errors.store_listening_history.message}</p>
+            {errors.store_listening_history && <p className="text-red-400 text-sm mt-2 font-medium ml-8">{errors.store_listening_history.message}</p>}
+          </div>
+          
+          <div className="group pt-2">
+            <label className="flex items-start space-x-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                {...register("terms_agreement", { required: "You must agree to the Terms of Service and Privacy Policy" })}
+                className="mt-1 rounded border-gray-700 bg-gray-800 text-green-500 focus:ring-green-500 focus:ring-offset-0 transition-colors cursor-pointer"
+                onChange={(e) => setTermsChecked(e.target.checked)}
+              />
+              <span className={`text-sm ${termsChecked ? 'text-green-500' : 'text-red-400'} transition-colors duration-300 group-hover:text-white`}>
+                I agree to the <Link to="/terms" className="text-green-500 hover:text-green-400">Terms of Service</Link> and <Link to="/privacy" className="text-green-500 hover:text-green-400">Privacy Policy</Link>.
+              </span>
+            </label>
+            {errors.terms_agreement && (
+              <p className="text-red-400 text-sm mt-2 font-medium">{errors.terms_agreement.message}</p>
             )}
           </div>
           
