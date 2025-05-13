@@ -1,5 +1,6 @@
 import React from "react";
 import AnimatedList from "../styles/components/AnimatedList";
+import SpotifyAttribution from "./utils/SpotifyAttribution";
 
 const TopAlbumsChart = ({ albums }) => {
   if (!albums || albums.length === 0) {
@@ -103,6 +104,17 @@ const TopAlbumsChart = ({ albums }) => {
           animationDuration={0.15}
           triggerOnce={true}
         />
+        <div className="flex justify-between items-center mt-3 p-3 border-t border-gray-300/10">
+          <SpotifyAttribution size="sm" />
+          <a 
+            href="https://open.spotify.com/search" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-xs text-gray-400 hover:text-green-500 transition-colors duration-300"
+          >
+            View on Spotify
+          </a>
+        </div>
       </div>
     </div>
   );

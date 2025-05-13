@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"; 
-import CircularGallery from "../styles/components/CircularGallery";  
+import CircularGallery from "../styles/components/CircularGallery";
+import SpotifyAttribution from "./utils/SpotifyAttribution";
 
 const TopArtistsChart = ({ artists }) => {   
   const [isVisible, setIsVisible] = useState(false);
@@ -77,6 +78,15 @@ const TopArtistsChart = ({ artists }) => {
     genres: artist.genres || []
   }));
 
+  //& check if have artists to link specific artist pg
+  const spotifyUrl = artists && artists.length > 0 && artists[0].spotify_id
+    ? `https://open.spotify.com/artist/${artists[0].spotify_id}`
+    : "https://open.spotify.com/search";
+    
+  const viewText = artists && artists.length > 0 && artists[0].spotify_id
+    ? "View Artist on Spotify"
+    : "View on Spotify";
+
   return (     
     <div 
       className="top-artists-container" 
@@ -91,8 +101,23 @@ const TopArtistsChart = ({ artists }) => {
           transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
           transition: 'opacity 0.6s ease, transform 0.6s ease'
         }}
+        className="flex flex-col bg-gray-100/10 backdrop-blur-sm rounded-xl border border-gray-300/20 shadow-lg overflow-hidden"
       >
-        <CircularGallery artists={formattedArtists} />
+        <div className="p-3">
+          <CircularGallery artists={formattedArtists} />
+        </div>
+        
+        <div className="flex justify-between items-center p-3 mt-2 border-t border-gray-300/10">
+          <SpotifyAttribution size="sm" variant="black" />
+          <a 
+            href={spotifyUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-xs text-gray-400 hover:text-green-500 transition-colors duration-300"
+          >
+            {viewText}
+          </a>
+        </div>
       </div>    
     </div>   
   ); 

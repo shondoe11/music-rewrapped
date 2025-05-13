@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import * as d3 from 'd3';
 import { getSpotifyTopArtistsWithGenres } from '../api';
 import { isSafari } from '../utils/browserDetection';
+import SpotifyAttribution from './utils/SpotifyAttribution';
 
 const timeFrameMapping = [
   { label: 'Last 4 Weeks', value: 'short_term' },
@@ -350,6 +351,17 @@ const FavoriteGenresEvolution = ({ userId }) => {
       >
         <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
           <svg ref={svgRef} viewBox="0 0 900 400" preserveAspectRatio="xMidYMid meet" width="100%" height="100%"></svg>
+        </div>
+        <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-300/20">
+          <SpotifyAttribution size="sm" variant="black" />
+          <a 
+            href={`https://open.spotify.com/search/${encodeURIComponent(topGenres[0] || 'genres')}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-xs text-gray-400 hover:text-green-500 transition-colors duration-300"
+          >
+            {topGenres.length > 0 ? `Explore ${topGenres[0]} on Spotify` : 'View Genres on Spotify'}
+          </a>
         </div>
       </div>
       <div 
