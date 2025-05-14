@@ -62,7 +62,7 @@ def create_app(config_class=DevelopmentConfig):
     #& simple test route
     @app.route('/')
     def index():
-        return 'Hello, Music Re-Wrapped!'
+        return 'Hello, Music Re-Wrapped! experience it at https://musicrewrapped.onrender.com'
 
     #& health-check endpoint verify db & redis connectivity
     @app.route('/health')
