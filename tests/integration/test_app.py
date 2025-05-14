@@ -50,7 +50,7 @@ def test_index_endpoint(client):
     assert response.status_code == 200
     text = response.get_data(as_text=True)
     #~ check index endpoint returns expected greeting msg
-    assert 'Hello, Music Re-Wrapped!' in text
+    assert 'Hello, Music Re-Wrapped! experience it at https://musicrewrapped.onrender.com' in text
 
 #& test fr auth blueprint; expect either redirect / 404 if not implemented yet
 def test_auth_blueprint(client):
