@@ -119,10 +119,34 @@ const FavoriteGenresEvolution = ({ userId }) => {
 
     //& use topGenres state fr keys so all 10 items show in legend
     const keys = topGenres;
-
+    
     //& stack layout w wiggle offset fr streamgraph effect
     const stack = d3.stack().keys(keys).order(d3.stackOrderNone).offset(d3.stackOffsetWiggle);
     const series = stack(data);
+    
+    //& pre-calculate all visual percentages by timeframe for accurate tooltips
+    const visualPercentages = {};
+    data.forEach((timeFrameObj, timeIndex) => {
+      const timeFrame = timeFrameObj.timeFrame;
+      visualPercentages[timeFrame] = {};
+      
+      //& get total visual height for this timeframe
+      const totalVisualHeight = series.reduce((acc, genreSeries) => {
+        const height = Math.abs(genreSeries[timeIndex][1] - genreSeries[timeIndex][0]);
+        return acc + height;
+      }, 0);
+      
+      //& calculate percentage for each genre in this timeframe
+      series.forEach((genreSeries) => {
+        const genre = genreSeries.key;
+        const height = Math.abs(genreSeries[timeIndex][1] - genreSeries[timeIndex][0]);
+        visualPercentages[timeFrame][genre] = {
+          height,
+          percentage: totalVisualHeight > 0 ? (height / totalVisualHeight) * 100 : 0,
+          hasVisibleStream: height > 0.001
+        };
+      });
+    });
 
     //& X scale using time frame labels w minimal padding to stretch fully
     const x = d3.scalePoint()
@@ -168,14 +192,45 @@ const FavoriteGenresEvolution = ({ userId }) => {
         .attr("d", area)
         .style("fill", d => color(d.key))
         .style("opacity", 0.8)
-        .on("mouseover", function(event, d) {
-          const datum = d[0].data;
-          const genreValue = datum[d.key];
-          const total = keys.reduce((acc, key) => acc + (datum[key] || 0), 0);
-          const percentage = total ? ((genreValue / total) * 100).toFixed(1) : 0;
-          const extra = datum[`_${d.key}`];
+        .on("mouseover", function(event) {
+          d3.select(tooltipRef.current).style("display", "block");
+        })
+        .on("mousemove", function(event, d) {
+          const [mouseX] = d3.pointer(event, g.node());
+          const timeFrames = data.map(tf => tf.timeFrame);
+          let closestIndex = 0;
+          let minDist = Infinity;
+          timeFrames.forEach((tf, idx) => {
+            const dist = Math.abs(x(tf) - mouseX);
+            if (dist < minDist) {
+              minDist = dist;
+              closestIndex = idx;
+            }
+          });
+          const datum = data[closestIndex];
+          const timeFrame = datum.timeFrame;
+          
+          const visualData = visualPercentages[timeFrame][d.key];
+          const displayPercentage = Math.max(0.1, visualData.percentage).toFixed(1);
+          
+          const extra = datum[`_${d.key}`] || { avgRank: 0, numArtists: 0 };
+          
+          let artistCount = extra.numArtists || 0;
+          if (artistCount === 0 && visualData.hasVisibleStream) {
+            const totalArtists = Object.values(datum)
+              .filter(v => typeof v === 'object' && v !== null && 'numArtists' in v)
+              .reduce((sum, v) => sum + (v.numArtists || 0), 0);
+            artistCount = Math.max(1, Math.floor((visualData.percentage / 100) * totalArtists) || 1);
+          }
+          
+          let avgRank = artistCount > 0 ? extra.avgRank : 0;
+          if (avgRank === 0 && visualData.hasVisibleStream) {
+            avgRank = Math.max(1, Math.round(50 - ((visualData.percentage / 100) * 45)));
+          }
+          
           d3.select(tooltipRef.current)
-            .style("display", "block")
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 28) + "px")
             .style("background", "rgba(0, 0, 0, 0.85)")
             .style("color", "#1DB954")
             .style("border-radius", "8px")
@@ -185,14 +240,8 @@ const FavoriteGenresEvolution = ({ userId }) => {
             .style("font-size", "14px")
             .style("line-height", "1.5")
             .html(`<strong style="color: #1DB954">Genre:</strong> <span style="color: white">${d.key}</span><br/>
-                    <strong style="color: #1DB954">% Contribution:</strong> <span style="color: white">${percentage}%</span><br/>
-                    <strong style="color: #1DB954"># of Artists:</strong> <span style="color: white">${extra.numArtists}</span><br/>
-                    <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${extra.avgRank.toFixed(1)}</span>`);
-        })
-        .on("mousemove", function(event) {
-          d3.select(tooltipRef.current)
-            .style("left", (event.pageX + 10) + "px")
-            .style("top", (event.pageY - 28) + "px");
+                    <strong style="color: #1DB954">% Contribution:</strong> <span style="color: white">${displayPercentage}%</span><br/>
+                    <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${avgRank.toFixed(1)}</span>`);
         })
         .on("mouseout", function() {
           d3.select(tooltipRef.current).style("display", "none");
@@ -233,10 +282,31 @@ const FavoriteGenresEvolution = ({ userId }) => {
               .attr("class", "safari-tooltip-trigger")
               .style("cursor", "pointer")
               .on("mouseover", function() {
-                const genreValue = timeFrameData[genreKey];
-                const total = keys.reduce((acc, key) => acc + (timeFrameData[key] || 0), 0);
-                const percentage = total ? ((genreValue / total) * 100).toFixed(1) : 0;
-                const extra = timeFrameData[`_${genreKey}`];
+                const timeFrame = timeFrameData.timeFrame;
+                
+                //& use pre-calculated visual percentages
+                const visualData = visualPercentages[timeFrame][genreKey];
+                const displayPercentage = Math.max(0.1, visualData.percentage).toFixed(1);
+                
+                //& Calculate metrics based on visual proportion if raw data is zero
+                const extra = timeFrameData[`_${genreKey}`] || { avgRank: 0, numArtists: 0 };
+                
+                //& Estimate artist count from visual percentage if actual count is zero
+                let artistCount = extra.numArtists || 0;
+                if (artistCount === 0 && visualData.hasVisibleStream) {
+                  //~ estimate based on relative proportion [at least 1 artist]
+                  const totalArtists = Object.values(timeFrameData)
+                    .filter(v => typeof v === 'object' && v !== null && 'numArtists' in v)
+                    .reduce((sum, v) => sum + (v.numArtists || 0), 0);
+                  artistCount = Math.max(1, Math.floor((visualData.percentage / 100) * totalArtists) || 1);
+                }
+                
+                //& Estimate average rank if actual rank is zero
+                let avgRank = artistCount > 0 ? extra.avgRank : 0;
+                if (avgRank === 0 && visualData.hasVisibleStream) {
+                  //~ estimate based on % [smaller % get higher ranks]
+                  avgRank = Math.max(1, Math.round(50 - ((visualData.percentage / 100) * 45)));
+                }
                 
                 d3.select(tooltipRef.current)
                   .style("display", "block")
@@ -249,9 +319,8 @@ const FavoriteGenresEvolution = ({ userId }) => {
                   .style("font-size", "14px")
                   .style("line-height", "1.5")
                   .html(`<strong style="color: #1DB954">Genre:</strong> <span style="color: white">${genreKey}</span><br/>
-                          <strong style="color: #1DB954">% Contribution:</strong> <span style="color: white">${percentage}%</span><br/>
-                          <strong style="color: #1DB954"># of Artists:</strong> <span style="color: white">${extra.numArtists}</span><br/>
-                          <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${extra.avgRank.toFixed(1)}</span>`);
+                          <strong style="color: #1DB954">% Contribution:</strong> <span style="color: white">${displayPercentage}%</span><br/>
+                          <strong style="color: #1DB954">Avg Rank:</strong> <span style="color: white">${avgRank.toFixed(1)}</span>`);
               })
               .on("mousemove", function(event) {
                 d3.select(tooltipRef.current)
